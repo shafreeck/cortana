@@ -1,6 +1,7 @@
 package cortana
 
 import (
+	"bytes"
 	"errors"
 	"fmt"
 	"os"
@@ -10,10 +11,24 @@ import (
 )
 
 // Command is the unit to run
-type Command func(args []string)
+type Command func()
+
+// desc describes a command
+type desc struct {
+	title       string
+	description string
+	flags       string
+}
+
+type context struct {
+	name string
+	args []string
+	desc desc
+}
 
 // Cortana is the commander
 type Cortana struct {
+	ctx      *context
 	commands map[string]Command
 }
 
@@ -69,9 +84,64 @@ func (c *Cortana) Launch() {
 		}
 
 		args := append(names[l-i:], flags...)
-		cmd(args)
+		c.ctx = &context{
+			name: path,
+			args: args,
+		}
+		cmd()
 		return
 	}
+}
+
+// Args returns the args in current context
+func (c *Cortana) Args() []string {
+	return c.ctx.args
+}
+
+// Use the flags
+func (c *Cortana) Use(title, description string, v interface{}) {
+	flags := c.collectFlags(v)
+	c.ctx.desc = desc{
+		title:       title,
+		description: description,
+		flags:       flags,
+	}
+	UnmarshalArgs(c.ctx.args, v)
+}
+
+// Usage prints the usage
+func (c *Cortana) Usage() {
+	w := bytes.NewBuffer(nil)
+	w.WriteString(c.ctx.desc.title + "\n")
+	w.WriteString(c.ctx.desc.description + "\n")
+	w.WriteString(c.ctx.desc.flags + "\n")
+	fmt.Print(w.String())
+	os.Exit(0)
+}
+
+func (c *Cortana) collectFlags(v interface{}) string {
+	flags := make(map[string]*reflect.Value)
+	names := buildArgsIndex(flags, reflect.ValueOf(v))
+
+	w := bytes.NewBuffer(nil)
+	w.WriteString(c.ctx.name)
+
+	for i := range names {
+		rv := names[i]
+		name := rv.String()
+		// TODO use required flag
+		if rv.IsZero() {
+			w.WriteString(" <" + name + ">")
+		} else {
+			w.WriteString(" [" + name + "]")
+		}
+	}
+	w.WriteString("\n")
+
+	for flag := range flags {
+		w.WriteString(flag + "\n")
+	}
+	return w.String()
 }
 
 func buildArgsIndex(flags map[string]*reflect.Value, rv reflect.Value) []*reflect.Value {
@@ -84,7 +154,6 @@ func buildArgsIndex(flags map[string]*reflect.Value, rv reflect.Value) []*reflec
 	for i := 0; i < rt.NumField(); i++ {
 		ft := rt.Field(i)
 		fv := rv.Field(i)
-		//fmt.Println(i, ft.Name, fv.Kind())
 		if fv.Kind() == reflect.Struct {
 			names = append(names, buildArgsIndex(flags, fv)...)
 			continue
@@ -92,7 +161,6 @@ func buildArgsIndex(flags map[string]*reflect.Value, rv reflect.Value) []*reflec
 
 		tag := ft.Tag.Get("cortana")
 		parts := strings.Fields(tag)
-		fmt.Println(i, ft.Name, parts)
 		switch l := len(parts); {
 		case l == 0:
 			names = append(names, &fv)
@@ -171,4 +239,28 @@ func UnmarshalArgs(args []string, v interface{}) {
 			i++
 		}
 	}
+}
+
+var c *Cortana
+
+func init() {
+	c = New()
+}
+
+func Use(title, description string, v interface{}) {
+	c.Use(title, description, v)
+}
+
+func Usage() {
+	c.Usage()
+}
+func Args() []string {
+	return c.Args()
+}
+func AddCommand(path string, cmd Command) {
+	c.AddCommand(path, cmd)
+}
+
+func Launch() {
+	c.Launch()
 }
