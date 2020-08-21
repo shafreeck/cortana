@@ -98,15 +98,26 @@ func (c *Cortana) Args() []string {
 	return c.ctx.args
 }
 
-// Use the flags
-func (c *Cortana) Use(title, description string, v interface{}) {
-	flags := c.collectFlags(v)
-	c.ctx.desc = desc{
-		title:       title,
-		description: description,
-		flags:       flags,
+type ParseOption func(d *desc)
+
+func WithTitle(s string) ParseOption {
+	return func(d *desc) {
+		d.title = s
 	}
-	UnmarshalArgs(c.ctx.args, v)
+}
+func WithDescription(s string) ParseOption {
+	return func(d *desc) {
+		d.description = s
+	}
+}
+
+// Parse the flags
+func (c *Cortana) Parse(v interface{}, opts ...ParseOption) {
+	for _, opt := range opts {
+		opt(&c.ctx.desc)
+	}
+	c.ctx.desc.flags = c.collectFlags(v)
+	c.unmarshalArgs(c.ctx.args, v)
 }
 
 // Usage prints the usage
@@ -198,22 +209,25 @@ func applyValue(v *reflect.Value, s string) error {
 	return nil
 }
 
-// UnmarshalArgs fills v with the parsed args
-func UnmarshalArgs(args []string, v interface{}) {
+// unmarshalArgs fills v with the parsed args
+func (c *Cortana) unmarshalArgs(args []string, v interface{}) {
 	flags := make(map[string]*flag)
 	nonflags := buildArgsIndex(flags, reflect.ValueOf(v))
 
-	var n int
 	for i := 0; i < len(args); i++ {
+		// print the usage and exit
+		if args[i] == "-h" || args[i] == "--help" {
+			c.Usage()
+		}
 		// handle nonflags
 		if !strings.HasPrefix(args[i], "-") {
-			if n == len(nonflags) {
+			if len(nonflags) == 0 {
 				Fatal(errors.New("unknown argument " + args[i]))
 			}
-			if err := applyValue(&nonflags[n].rv, args[i]); err != nil {
+			if err := applyValue(&nonflags[0].rv, args[i]); err != nil {
 				Fatal(err)
 			}
-			n++
+			nonflags = nonflags[1:]
 			continue
 		}
 		//TODO handle flags pattern: --key value, --key=value, --key
@@ -235,8 +249,8 @@ func init() {
 	c = New()
 }
 
-func Use(title, description string, v interface{}) {
-	c.Use(title, description, v)
+func Parse(v interface{}, opts ...ParseOption) {
+	c.Parse(v, opts...)
 }
 
 func Usage() {
