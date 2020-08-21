@@ -78,7 +78,7 @@ func (c *Cortana) Launch() {
 		if !ok {
 			// no more commands in path
 			if i+1 == l {
-				Fatal(errors.New("unknow command pattern " + strings.Join(names, " ")))
+				Fatal(errors.New("unknown command pattern: " + strings.Join(names, " ")))
 			}
 			continue
 		}
@@ -161,8 +161,13 @@ func (c *Cortana) collectFlags(v interface{}) string {
 		if f.short != "-" {
 			short = f.short
 		}
-		s := fmt.Sprintf("  %-2s %-20s %s\n", short, long, f.description)
-		w.WriteString(s)
+		if !f.required {
+			s := fmt.Sprintf("  %-2s %-20s %s. (default=%s)\n", short, long, f.description, f.defaultValue)
+			w.WriteString(s)
+		} else {
+			s := fmt.Sprintf("  %-2s %-20s %s\n", short, long, f.description)
+			w.WriteString(s)
+		}
 	}
 
 	return w.String()
@@ -312,7 +317,7 @@ func (c *Cortana) unmarshalArgs(args []string, v interface{}) {
 		// handle nonflags
 		if !strings.HasPrefix(args[i], "-") {
 			if len(nonflags) == 0 {
-				Fatal(errors.New("unknown argument " + args[i]))
+				Fatal(errors.New("unknown argument: " + args[i]))
 			}
 			if err := applyValue(&nonflags[0].rv, args[i]); err != nil {
 				Fatal(err)
@@ -354,7 +359,7 @@ func (c *Cortana) unmarshalArgs(args []string, v interface{}) {
 				Fatal(errors.New(key + " requires an argument"))
 			}
 		} else {
-			Fatal(errors.New("unknow argument " + args[i]))
+			Fatal(errors.New("unknown argument: " + args[i]))
 		}
 	}
 }
