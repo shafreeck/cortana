@@ -32,7 +32,7 @@ together to choose the person more effectively`
 Say anything to anyone
 
 You can say anything you want to anyone, the person can be
-selected by using the name, age or location. You can event combine these conditions
+selected by using the name, age or location. You can even combine these conditions
 together to choose the person more effectively
 
 Sub-commands:
