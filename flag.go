@@ -42,7 +42,6 @@ func parseFlag(s string, rv reflect.Value) *flag {
 				f.required = true
 			} else {
 				f.defaultValue = p
-				applyValue(&f.rv, p)
 			}
 			state = description
 		case description:

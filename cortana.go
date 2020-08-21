@@ -132,7 +132,7 @@ func (c *Cortana) Usage() {
 		fmt.Println()
 	}
 
-	fmt.Println(c.ctx.desc.flags)
+	fmt.Println("Usage:", c.ctx.desc.flags)
 	os.Exit(0)
 }
 
@@ -201,6 +201,9 @@ func parseCortanaTags(rv reflect.Value) ([]*flag, []*nonflag) {
 }
 func buildArgsIndex(flagsIdx map[string]*flag, rv reflect.Value) []*nonflag {
 	flags, nonflags := parseCortanaTags(rv)
+	if err := applyDefaultValues(flags, nonflags); err != nil {
+		Fatal(err)
+	}
 	for _, f := range flags {
 		if f.long != "" {
 			flagsIdx[f.long] = f
@@ -210,6 +213,25 @@ func buildArgsIndex(flagsIdx map[string]*flag, rv reflect.Value) []*nonflag {
 		}
 	}
 	return nonflags
+}
+func applyDefaultValues(flags []*flag, nonflags []*nonflag) error {
+	for _, nf := range nonflags {
+		if nf.required {
+			continue
+		}
+		if err := applyValue(&nf.rv, nf.defaultValue); err != nil {
+			return err
+		}
+	}
+	for _, f := range flags {
+		if f.required {
+			continue
+		}
+		if err := applyValue(&f.rv, f.defaultValue); err != nil {
+			return err
+		}
+	}
+	return nil
 }
 func applyValue(v *reflect.Value, s string) error {
 	switch v.Kind() {
