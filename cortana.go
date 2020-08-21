@@ -28,7 +28,7 @@ type context struct {
 
 // Cortana is the commander
 type Cortana struct {
-	ctx      *context
+	ctx      context
 	commands map[string]Command
 }
 
@@ -52,7 +52,7 @@ func (c *Cortana) AddCommand(path string, cmd Command) {
 func (c *Cortana) Launch() {
 	args := os.Args[1:]
 	if len(args) == 0 {
-		return // TODO usage
+		c.Usage()
 	}
 
 	// the arguments with '-' prefix are flags, others are names
@@ -84,7 +84,7 @@ func (c *Cortana) Launch() {
 		}
 
 		args := append(names[l-i:], flags...)
-		c.ctx = &context{
+		c.ctx = context{
 			name: path,
 			args: args,
 		}
@@ -131,8 +131,16 @@ func (c *Cortana) Usage() {
 		fmt.Println(c.ctx.desc.description)
 		fmt.Println()
 	}
+	if len(c.commands) > 0 {
+		fmt.Println("Sub-commands:")
+		for name := range c.commands {
+			fmt.Println("  ", name)
+		}
+	}
 
-	fmt.Println("Usage:", c.ctx.desc.flags)
+	if c.ctx.desc.flags != "" {
+		fmt.Println("Usage:", c.ctx.desc.flags)
+	}
 	os.Exit(0)
 }
 
