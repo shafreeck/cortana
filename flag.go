@@ -46,7 +46,7 @@ func parseFlag(s string, rv reflect.Value) *flag {
 			}
 			state = description
 		case description:
-			f.description = strings.Join(parts[i:], "")
+			f.description = strings.Join(parts[i:], " ")
 			return f
 		}
 	}

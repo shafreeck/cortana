@@ -118,25 +118,29 @@ func (c *Cortana) Parse(v interface{}, opts ...ParseOption) {
 	}
 	c.ctx.desc.flags = c.collectFlags(v)
 	c.unmarshalArgs(c.ctx.args, v)
+	c.checkRequires(c.ctx.args, v)
 }
 
 // Usage prints the usage
 func (c *Cortana) Usage() {
-	w := bytes.NewBuffer(nil)
-	w.WriteString(c.ctx.desc.title + "\n")
-	w.WriteString(c.ctx.desc.description + "\n")
-	w.WriteString(c.ctx.desc.flags + "\n")
-	fmt.Print(w.String())
+	if c.ctx.desc.title != "" {
+		fmt.Println(c.ctx.desc.title)
+		fmt.Println()
+	}
+	if c.ctx.desc.description != "" {
+		fmt.Println(c.ctx.desc.description)
+		fmt.Println()
+	}
+
+	fmt.Println(c.ctx.desc.flags)
 	os.Exit(0)
 }
 
 func (c *Cortana) collectFlags(v interface{}) string {
-	flags := make(map[string]*flag)
-	nonflags := buildArgsIndex(flags, reflect.ValueOf(v))
+	flags, nonflags := parseCortanaTags(reflect.ValueOf(v))
 
 	w := bytes.NewBuffer(nil)
 	w.WriteString(c.ctx.name)
-
 	for _, nf := range nonflags {
 		if nf.required {
 			w.WriteString(" <" + nf.long + ">")
@@ -144,15 +148,28 @@ func (c *Cortana) collectFlags(v interface{}) string {
 			w.WriteString(" [" + nf.long + "]")
 		}
 	}
-	w.WriteString("\n")
-
-	for flag := range flags {
-		w.WriteString(flag + "\n")
+	if len(flags) > 0 {
+		w.WriteString(" [options]\n\n")
 	}
+
+	for _, f := range flags {
+		long := ""
+		short := ""
+		if f.long != "-" {
+			long = f.long
+		}
+		if f.short != "-" {
+			short = f.short
+		}
+		s := fmt.Sprintf("  %-2s %-20s %s\n", short, long, f.description)
+		w.WriteString(s)
+	}
+
 	return w.String()
 }
 
-func buildArgsIndex(flags map[string]*flag, rv reflect.Value) []*nonflag {
+func parseCortanaTags(rv reflect.Value) ([]*flag, []*nonflag) {
+	flags := make([]*flag, 0)
 	nonflags := make([]*nonflag, 0)
 	for rv.Kind() == reflect.Ptr {
 		rv = rv.Elem()
@@ -163,22 +180,33 @@ func buildArgsIndex(flags map[string]*flag, rv reflect.Value) []*nonflag {
 		ft := rt.Field(i)
 		fv := rv.Field(i)
 		if fv.Kind() == reflect.Struct {
-			nonflags = append(nonflags, buildArgsIndex(flags, fv)...)
+			f, nf := parseCortanaTags(fv)
+			flags = append(flags, f...)
+			nonflags = append(nonflags, nf...)
 			continue
 		}
 
 		tag := ft.Tag.Get("cortana")
 		f := parseFlag(tag, fv)
 		if strings.HasPrefix(f.long, "-") {
-			if f.long != "-" {
-				flags[f.long] = f
-			}
-			if f.short != "-" {
-				flags[f.short] = f
+			if f.long != "-" || f.short != "-" {
+				flags = append(flags, f)
 			}
 		} else {
 			nf := nonflag(*f)
 			nonflags = append(nonflags, &nf)
+		}
+	}
+	return flags, nonflags
+}
+func buildArgsIndex(flagsIdx map[string]*flag, rv reflect.Value) []*nonflag {
+	flags, nonflags := parseCortanaTags(rv)
+	for _, f := range flags {
+		if f.long != "" {
+			flagsIdx[f.long] = f
+		}
+		if f.short != "" {
+			flagsIdx[f.short] = f
 		}
 	}
 	return nonflags
@@ -205,8 +233,48 @@ func applyValue(v *reflect.Value, s string) error {
 			return err
 		}
 		v.SetFloat(f)
+	case reflect.Bool:
+		b, err := strconv.ParseBool(s)
+		if err != nil {
+			return err
+		}
+		v.SetBool(b)
 	}
 	return nil
+}
+func (c *Cortana) checkRequires(args []string, v interface{}) {
+	flags, nonflags := parseCortanaTags(reflect.ValueOf(v))
+
+	argsIdx := make(map[string]struct{})
+	for _, arg := range args {
+		argsIdx[arg] = struct{}{}
+	}
+	for _, nf := range nonflags {
+		if !nf.required {
+			continue
+		}
+		if _, ok := argsIdx[nf.long]; !ok {
+			Fatal(errors.New(nf.long + " is required"))
+		}
+	}
+	for _, f := range flags {
+		if !f.required {
+			continue
+		}
+		if _, ok := argsIdx[f.long]; ok {
+			continue
+		}
+		if _, ok := argsIdx[f.short]; ok {
+			continue
+		}
+
+		if f.long != "-" {
+			Fatal(errors.New(f.long + " is required"))
+		}
+		if f.short != "-" {
+			Fatal(errors.New(f.short + " is required"))
+		}
+	}
 }
 
 // unmarshalArgs fills v with the parsed args
@@ -230,13 +298,39 @@ func (c *Cortana) unmarshalArgs(args []string, v interface{}) {
 			nonflags = nonflags[1:]
 			continue
 		}
-		//TODO handle flags pattern: --key value, --key=value, --key
-		flag, ok := flags[args[i]]
+
+		var key, value string
+		if strings.Index(args[i], "=") > 0 {
+			kvs := strings.Split(args[i], "=")
+			key, value = kvs[0], kvs[1]
+		} else {
+			key = args[i]
+		}
+		flag, ok := flags[key]
 		if ok {
-			if err := applyValue(&flag.rv, args[i+1]); err != nil {
-				Fatal(err)
+			if value != "" {
+				if err := applyValue(&flag.rv, value); err != nil {
+					Fatal(err)
+				}
+				continue
 			}
-			i++
+			if i+1 < len(args) {
+				next := args[i+1]
+				if next[0] != '-' {
+					if err := applyValue(&flag.rv, next); err != nil {
+						Fatal(err)
+					}
+					i++
+					continue
+				}
+			}
+			if flag.rv.Kind() == reflect.Bool {
+				if err := applyValue(&flag.rv, "true"); err != nil {
+					Fatal(err)
+				}
+			} else {
+				Fatal(errors.New(key + " requires an argument"))
+			}
 		} else {
 			Fatal(errors.New("unknow argument " + args[i]))
 		}
