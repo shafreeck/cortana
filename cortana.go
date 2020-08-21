@@ -120,20 +120,17 @@ func (c *Cortana) Usage() {
 }
 
 func (c *Cortana) collectFlags(v interface{}) string {
-	flags := make(map[string]*reflect.Value)
-	names := buildArgsIndex(flags, reflect.ValueOf(v))
+	flags := make(map[string]*flag)
+	nonflags := buildArgsIndex(flags, reflect.ValueOf(v))
 
 	w := bytes.NewBuffer(nil)
 	w.WriteString(c.ctx.name)
 
-	for i := range names {
-		rv := names[i]
-		name := rv.String()
-		// TODO use required flag
-		if rv.IsZero() {
-			w.WriteString(" <" + name + ">")
+	for _, nf := range nonflags {
+		if nf.required {
+			w.WriteString(" <" + nf.long + ">")
 		} else {
-			w.WriteString(" [" + name + "]")
+			w.WriteString(" [" + nf.long + "]")
 		}
 	}
 	w.WriteString("\n")
@@ -144,8 +141,8 @@ func (c *Cortana) collectFlags(v interface{}) string {
 	return w.String()
 }
 
-func buildArgsIndex(flags map[string]*reflect.Value, rv reflect.Value) []*reflect.Value {
-	names := make([]*reflect.Value, 0)
+func buildArgsIndex(flags map[string]*flag, rv reflect.Value) []*nonflag {
+	nonflags := make([]*nonflag, 0)
 	for rv.Kind() == reflect.Ptr {
 		rv = rv.Elem()
 	}
@@ -155,37 +152,25 @@ func buildArgsIndex(flags map[string]*reflect.Value, rv reflect.Value) []*reflec
 		ft := rt.Field(i)
 		fv := rv.Field(i)
 		if fv.Kind() == reflect.Struct {
-			names = append(names, buildArgsIndex(flags, fv)...)
+			nonflags = append(nonflags, buildArgsIndex(flags, fv)...)
 			continue
 		}
 
 		tag := ft.Tag.Get("cortana")
-		parts := strings.Fields(tag)
-		switch l := len(parts); {
-		case l == 0:
-			names = append(names, &fv)
-		case l == 1:
-			if parts[0] != "-" {
-				if strings.HasPrefix(parts[0], "-") {
-					flags[parts[0]] = &fv
-				} else {
-					names = append(names, &fv)
-				}
+		f := parseFlag(tag, fv)
+		if strings.HasPrefix(f.long, "-") {
+			if f.long != "-" {
+				flags[f.long] = f
 			}
-		case l >= 2:
-			if parts[0] != "-" {
-				flags[parts[0]] = &fv
+			if f.short != "-" {
+				flags[f.short] = f
 			}
-			if parts[1] != "-" {
-				flags[parts[1]] = &fv
-			}
-		}
-		// apply the default value
-		if len(parts) >= 3 && parts[2] != "-" {
-			applyValue(&fv, parts[2])
+		} else {
+			nf := nonflag(*f)
+			nonflags = append(nonflags, &nf)
 		}
 	}
-	return names
+	return nonflags
 }
 func applyValue(v *reflect.Value, s string) error {
 	switch v.Kind() {
@@ -215,28 +200,31 @@ func applyValue(v *reflect.Value, s string) error {
 
 // UnmarshalArgs fills v with the parsed args
 func UnmarshalArgs(args []string, v interface{}) {
-	flags := make(map[string]*reflect.Value)
-	names := buildArgsIndex(flags, reflect.ValueOf(v))
+	flags := make(map[string]*flag)
+	nonflags := buildArgsIndex(flags, reflect.ValueOf(v))
 
 	var n int
 	for i := 0; i < len(args); i++ {
+		// handle nonflags
 		if !strings.HasPrefix(args[i], "-") {
-			if n == len(names) {
+			if n == len(nonflags) {
 				Fatal(errors.New("unknown argument " + args[i]))
 			}
-			if err := applyValue(names[n], args[i]); err != nil {
+			if err := applyValue(&nonflags[n].rv, args[i]); err != nil {
 				Fatal(err)
 			}
 			n++
 			continue
 		}
-		//TODO handle pattern: --key=value, --key
+		//TODO handle flags pattern: --key value, --key=value, --key
 		flag, ok := flags[args[i]]
 		if ok {
-			if err := applyValue(flag, args[i+1]); err != nil {
+			if err := applyValue(&flag.rv, args[i+1]); err != nil {
 				Fatal(err)
 			}
 			i++
+		} else {
+			Fatal(errors.New("unknow argument " + args[i]))
 		}
 	}
 }
