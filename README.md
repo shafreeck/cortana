@@ -6,7 +6,7 @@ An extreme simple command line parsing library
 func sayAnything() {
 	title := "Say anything to anyone"
 	description := `You can say anything you want to anyone, the person can be
-selected by using the name, age or location. You can event combine these conditions
+selected by using the name, age or location. You can even combine these conditions
 together to choose the person more effectively`
 	greeting := struct { //format: --long -short defaultValue description
 		Name     string `cortana:"--name -n cortana say something to cortana"`
