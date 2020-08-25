@@ -293,17 +293,26 @@ func applyValue(v *reflect.Value, s string) error {
 func (c *Cortana) checkRequires(args []string, v interface{}) {
 	flags, nonflags := parseCortanaTags(reflect.ValueOf(v))
 
+	// check the nonflags
+	i := 0
+	for _, arg := range args {
+		if !strings.HasPrefix(arg, "-") {
+			i++
+		}
+	}
+	if i < len(nonflags) {
+		for _, nf := range nonflags[i:] {
+			if nf.required {
+				fatal(errors.New(nf.long + " is required"))
+			}
+		}
+
+	}
+
+	// check the flags
 	argsIdx := make(map[string]struct{})
 	for _, arg := range args {
 		argsIdx[arg] = struct{}{}
-	}
-	for _, nf := range nonflags {
-		if !nf.required {
-			continue
-		}
-		if _, ok := argsIdx[nf.long]; !ok {
-			fatal(errors.New(nf.long + " is required"))
-		}
 	}
 	for _, f := range flags {
 		if !f.required {
