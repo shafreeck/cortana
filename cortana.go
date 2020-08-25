@@ -131,6 +131,7 @@ func (c *Cortana) Usage() {
 	commands := c.commands.scan(c.ctx.name)
 	if len(commands) > 0 {
 		fmt.Println("Available commands:")
+		fmt.Println()
 		for _, cmd := range commands {
 			fmt.Printf("%-30s%s\n", cmd.path, cmd.brief)
 		}
