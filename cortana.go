@@ -315,7 +315,9 @@ func (c *Cortana) checkRequires(args []string, v interface{}) {
 	if i < len(nonflags) {
 		for _, nf := range nonflags[i:] {
 			if nf.required {
-				fatal(errors.New(nf.long + " is required"))
+				fmt.Println(nf.long + " is required")
+				fmt.Println()
+				c.Usage()
 			}
 		}
 
@@ -338,10 +340,14 @@ func (c *Cortana) checkRequires(args []string, v interface{}) {
 		}
 
 		if f.long != "-" {
-			fatal(errors.New(f.long + " is required"))
+			fmt.Println(f.long + " is required")
+			fmt.Println()
+			c.Usage()
 		}
 		if f.short != "-" {
-			fatal(errors.New(f.short + " is required"))
+			fmt.Println(f.short + " is required")
+			fmt.Println()
+			c.Usage()
 		}
 	}
 }
