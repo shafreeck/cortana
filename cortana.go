@@ -170,19 +170,23 @@ func (c *Cortana) collectFlags(v interface{}) string {
 	}
 
 	for _, f := range flags {
-		long := ""
-		short := ""
-		if f.long != "-" {
-			long = f.long
-		}
+		var flag string
 		if f.short != "-" {
-			short = f.short
+			flag += f.short
 		}
+		if f.long != "-" {
+			if f.short != "-" {
+				flag += ", " + f.long
+			} else {
+				flag += "    " + f.long
+			}
+		}
+		flag += " <" + strings.ToLower(f.name) + ">"
 		if !f.required {
-			s := fmt.Sprintf("  %-2s %-20s %s. (default=%s)\n", short, long, f.description, f.defaultValue)
+			s := fmt.Sprintf("  %-30s %s. (default=%s)\n", flag, f.description, f.defaultValue)
 			w.WriteString(s)
 		} else {
-			s := fmt.Sprintf("  %-2s %-20s %s\n", short, long, f.description)
+			s := fmt.Sprintf("  %-30s %s\n", flag, f.description)
 			w.WriteString(s)
 		}
 	}
@@ -209,7 +213,7 @@ func parseCortanaTags(rv reflect.Value) ([]*flag, []*nonflag) {
 		}
 
 		tag := ft.Tag.Get("cortana")
-		f := parseFlag(tag, fv)
+		f := parseFlag(tag, ft.Name, fv)
 		if strings.HasPrefix(f.long, "-") {
 			if f.long != "-" || f.short != "-" {
 				flags = append(flags, f)

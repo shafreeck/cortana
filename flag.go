@@ -6,6 +6,7 @@ import (
 )
 
 type flag struct {
+	name         string // the field name
 	long         string
 	short        string
 	required     bool
@@ -17,9 +18,9 @@ type flag struct {
 // nonflag is in fact a flag without prefix "-"
 type nonflag flag
 
-func parseFlag(s string, rv reflect.Value) *flag {
-	f := &flag{rv: rv}
-	parts := strings.Fields(s)
+func parseFlag(tag string, name string, rv reflect.Value) *flag {
+	f := &flag{name: name, rv: rv}
+	parts := strings.Fields(tag)
 
 	const (
 		long = iota
