@@ -181,7 +181,15 @@ func (c *Cortana) collectFlags(v interface{}) string {
 				flag += "    " + f.long
 			}
 		}
-		flag += " <" + strings.ToLower(f.name) + ">"
+		if f.long != "-" {
+			flag += " <" + strings.TrimLeft(f.long, "-") + ">"
+		} else {
+			flag += " <" + strings.ToLower(f.name) + ">"
+		}
+		if len(flag) > 30 {
+			// align with 32 spaces
+			flag += "\n                                "
+		}
 		if !f.required {
 			s := fmt.Sprintf("  %-30s %s. (default=%s)\n", flag, f.description, f.defaultValue)
 			w.WriteString(s)
