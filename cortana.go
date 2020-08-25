@@ -8,28 +8,14 @@ import (
 	"reflect"
 	"strconv"
 	"strings"
+
+	"github.com/google/btree"
 )
-
-// Command is the unit to run
-type Command func()
-
-// desc describes a command
-type desc struct {
-	title       string
-	description string
-	flags       string
-}
-
-type context struct {
-	name string
-	args []string
-	desc desc
-}
 
 // Cortana is the commander
 type Cortana struct {
 	ctx      context
-	commands map[string]Command
+	commands commands
 }
 
 // Fatal exit the process with an error
@@ -40,12 +26,12 @@ func Fatal(err error) {
 
 // New a Cortana commander
 func New() *Cortana {
-	return &Cortana{commands: make(map[string]Command)}
+	return &Cortana{commands: commands{t: btree.New(8)}}
 }
 
 // AddCommand adds a command
-func (c *Cortana) AddCommand(path string, cmd Command) {
-	c.commands[path] = cmd
+func (c *Cortana) AddCommand(path string, cmd func(), brief string) {
+	c.commands.t.ReplaceOrInsert(&command{path: path, brief: brief, proc: cmd})
 }
 
 // Launch and run commands
@@ -74,22 +60,29 @@ func (c *Cortana) Launch() {
 	l := len(names)
 	for i := range names {
 		path := strings.Join(names[0:l-i], " ")
-		cmd, ok := c.commands[path]
-		if !ok {
+		commands := c.commands.scan(path)
+		if len(commands) == 0 {
 			// no more commands in path
 			if i+1 == l {
 				Fatal(errors.New("unknown command pattern: " + strings.Join(names, " ")))
 			}
-			continue
+		} else {
+			cmd := commands[0]
+			if cmd.path == path {
+				args := append(names[l-i:], flags...)
+				c.ctx = context{
+					name: path,
+					args: args,
+				}
+				commands[0].proc()
+			} else {
+				c.ctx = context{
+					name: path,
+				}
+				c.Usage()
+			}
+			return
 		}
-
-		args := append(names[l-i:], flags...)
-		c.ctx = context{
-			name: path,
-			args: args,
-		}
-		cmd()
-		return
 	}
 }
 
@@ -98,13 +91,17 @@ func (c *Cortana) Args() []string {
 	return c.ctx.args
 }
 
+// ParseOption is the option for Parse
 type ParseOption func(d *desc)
 
+// WithTitle parses arguments with title
 func WithTitle(s string) ParseOption {
 	return func(d *desc) {
 		d.title = s
 	}
 }
+
+// WithDescription pares arguments with description
 func WithDescription(s string) ParseOption {
 	return func(d *desc) {
 		d.description = s
@@ -131,10 +128,11 @@ func (c *Cortana) Usage() {
 		fmt.Println(c.ctx.desc.description)
 		fmt.Println()
 	}
-	if len(c.commands) > 0 {
-		fmt.Println("Sub-commands:")
-		for name := range c.commands {
-			fmt.Println("  ", name)
+	commands := c.commands.scan(c.ctx.name)
+	if len(commands) > 0 {
+		fmt.Println("Available commands:")
+		for _, cmd := range commands {
+			fmt.Printf("%-30s%s\n", cmd.path, cmd.brief)
 		}
 	}
 
@@ -388,8 +386,8 @@ func Usage() {
 func Args() []string {
 	return c.Args()
 }
-func AddCommand(path string, cmd Command) {
-	c.AddCommand(path, cmd)
+func AddCommand(path string, cmd func(), brief string) {
+	c.AddCommand(path, cmd, brief)
 }
 
 func Launch() {
