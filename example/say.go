@@ -13,7 +13,8 @@ func sayHelloAnyone() {
 	person := struct {
 		Name string `cortana:"name"`
 	}{}
-	cortana.Parse(&person)
+	//cortana.Parse(&person)
+	cortana.Parse(nil)
 
 	fmt.Println("hello", person.Name)
 }

@@ -110,6 +110,9 @@ func WithDescription(s string) ParseOption {
 
 // Parse the flags
 func (c *Cortana) Parse(v interface{}, opts ...ParseOption) {
+	if v == nil {
+		return
+	}
 	for _, opt := range opts {
 		opt(&c.ctx.desc)
 	}
