@@ -387,20 +387,27 @@ func init() {
 	c = New()
 }
 
+// Parse the arguemnts into a struct
 func Parse(v interface{}, opts ...ParseOption) {
 	c.Parse(v, opts...)
 }
 
+// Usage prints the usage and exits
 func Usage() {
 	c.Usage()
 }
+
+// Args returns the arguments for current command
 func Args() []string {
 	return c.Args()
 }
+
+// AddCommand adds a command
 func AddCommand(path string, cmd func(), brief string) {
 	c.AddCommand(path, cmd, brief)
 }
 
+// Launch finds and executes the command
 func Launch() {
 	c.Launch()
 }
