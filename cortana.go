@@ -138,6 +138,10 @@ func (c *Cortana) Usage() {
 		fmt.Println()
 	}
 	commands := c.commands.scan(c.ctx.name)
+	// ignore the command itself
+	if len(commands) > 0 && commands[0].path == c.ctx.name {
+		commands = commands[1:]
+	}
 	if len(commands) > 0 {
 		fmt.Println("Available commands:")
 		fmt.Println()
