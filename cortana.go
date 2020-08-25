@@ -18,8 +18,8 @@ type Cortana struct {
 	commands commands
 }
 
-// Fatal exit the process with an error
-func Fatal(err error) {
+// fatal exit the process with an error
+func fatal(err error) {
 	fmt.Println(err)
 	os.Exit(-1)
 }
@@ -70,7 +70,7 @@ func (c *Cortana) Launch() {
 		if len(commands) == 0 {
 			// no more commands in path
 			if i+1 == l {
-				Fatal(errors.New("unknown command pattern: " + strings.Join(names, " ")))
+				fatal(errors.New("unknown command pattern: " + strings.Join(names, " ")))
 			}
 		} else {
 			cmd := commands[0]
@@ -224,7 +224,7 @@ func parseCortanaTags(rv reflect.Value) ([]*flag, []*nonflag) {
 func buildArgsIndex(flagsIdx map[string]*flag, rv reflect.Value) []*nonflag {
 	flags, nonflags := parseCortanaTags(rv)
 	if err := applyDefaultValues(flags, nonflags); err != nil {
-		Fatal(err)
+		fatal(err)
 	}
 	for _, f := range flags {
 		if f.long != "" {
@@ -298,7 +298,7 @@ func (c *Cortana) checkRequires(args []string, v interface{}) {
 			continue
 		}
 		if _, ok := argsIdx[nf.long]; !ok {
-			Fatal(errors.New(nf.long + " is required"))
+			fatal(errors.New(nf.long + " is required"))
 		}
 	}
 	for _, f := range flags {
@@ -313,10 +313,10 @@ func (c *Cortana) checkRequires(args []string, v interface{}) {
 		}
 
 		if f.long != "-" {
-			Fatal(errors.New(f.long + " is required"))
+			fatal(errors.New(f.long + " is required"))
 		}
 		if f.short != "-" {
-			Fatal(errors.New(f.short + " is required"))
+			fatal(errors.New(f.short + " is required"))
 		}
 	}
 }
@@ -334,10 +334,10 @@ func (c *Cortana) unmarshalArgs(args []string, v interface{}) {
 		// handle nonflags
 		if !strings.HasPrefix(args[i], "-") {
 			if len(nonflags) == 0 {
-				Fatal(errors.New("unknown argument: " + args[i]))
+				fatal(errors.New("unknown argument: " + args[i]))
 			}
 			if err := applyValue(&nonflags[0].rv, args[i]); err != nil {
-				Fatal(err)
+				fatal(err)
 			}
 			nonflags = nonflags[1:]
 			continue
@@ -354,7 +354,7 @@ func (c *Cortana) unmarshalArgs(args []string, v interface{}) {
 		if ok {
 			if value != "" {
 				if err := applyValue(&flag.rv, value); err != nil {
-					Fatal(err)
+					fatal(err)
 				}
 				continue
 			}
@@ -362,7 +362,7 @@ func (c *Cortana) unmarshalArgs(args []string, v interface{}) {
 				next := args[i+1]
 				if next[0] != '-' {
 					if err := applyValue(&flag.rv, next); err != nil {
-						Fatal(err)
+						fatal(err)
 					}
 					i++
 					continue
@@ -370,13 +370,13 @@ func (c *Cortana) unmarshalArgs(args []string, v interface{}) {
 			}
 			if flag.rv.Kind() == reflect.Bool {
 				if err := applyValue(&flag.rv, "true"); err != nil {
-					Fatal(err)
+					fatal(err)
 				}
 			} else {
-				Fatal(errors.New(key + " requires an argument"))
+				fatal(errors.New(key + " requires an argument"))
 			}
 		} else {
-			Fatal(errors.New("unknown argument: " + args[i]))
+			fatal(errors.New("unknown argument: " + args[i]))
 		}
 	}
 }
