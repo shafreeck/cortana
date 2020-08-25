@@ -32,3 +32,10 @@ func (c commands) scan(prefix string) []*command {
 	})
 	return cmds
 }
+func (c commands) get(path string) *command {
+	i := c.t.Get(&command{path: path})
+	if i != nil {
+		return i.(*command)
+	}
+	return nil
+}

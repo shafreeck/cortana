@@ -38,7 +38,13 @@ func (c *Cortana) AddCommand(path string, cmd func(), brief string) {
 func (c *Cortana) Launch() {
 	args := os.Args[1:]
 	if len(args) == 0 {
-		c.Usage()
+		cmd := c.commands.get("")
+		if cmd != nil {
+			cmd.proc()
+		} else {
+			c.Usage()
+		}
+		return
 	}
 
 	// the arguments with '-' prefix are flags, others are names
@@ -110,11 +116,11 @@ func WithDescription(s string) ParseOption {
 
 // Parse the flags
 func (c *Cortana) Parse(v interface{}, opts ...ParseOption) {
-	if v == nil {
-		return
-	}
 	for _, opt := range opts {
 		opt(&c.ctx.desc)
+	}
+	if v == nil {
+		return
 	}
 	c.ctx.desc.flags = c.collectFlags(v)
 	c.unmarshalArgs(c.ctx.args, v)
@@ -138,6 +144,7 @@ func (c *Cortana) Usage() {
 		for _, cmd := range commands {
 			fmt.Printf("%-30s%s\n", cmd.path, cmd.brief)
 		}
+		fmt.Println()
 	}
 
 	if c.ctx.desc.flags != "" {
