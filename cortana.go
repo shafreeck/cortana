@@ -197,10 +197,12 @@ func (c *Cortana) collectFlags(v interface{}) string {
 				flag += "    " + f.long
 			}
 		}
-		if f.long != "-" {
-			flag += " <" + strings.TrimLeft(f.long, "-") + ">"
-		} else {
-			flag += " <" + strings.ToLower(f.name) + ">"
+		if f.rv.Kind() != reflect.Bool {
+			if f.long != "-" {
+				flag += " <" + strings.TrimLeft(f.long, "-") + ">"
+			} else {
+				flag += " <" + strings.ToLower(f.name) + ">"
+			}
 		}
 		if len(flag) > 30 {
 			// align with 32 spaces
