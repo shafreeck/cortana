@@ -177,6 +177,9 @@ func (c *Cortana) collectFlags(v interface{}) string {
 
 	w := bytes.NewBuffer(nil)
 	w.WriteString(c.ctx.name)
+	if len(flags) > 0 {
+		w.WriteString(" [options]")
+	}
 	for _, nf := range nonflags {
 		if nf.required {
 			w.WriteString(" <" + nf.long + ">")
@@ -184,9 +187,7 @@ func (c *Cortana) collectFlags(v interface{}) string {
 			w.WriteString(" [" + nf.long + "]")
 		}
 	}
-	if len(flags) > 0 {
-		w.WriteString(" [options]\n\n")
-	}
+	w.WriteString("\n\n")
 
 	for _, f := range flags {
 		var flag string
