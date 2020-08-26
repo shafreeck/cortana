@@ -488,6 +488,11 @@ func AddConfig(path string, unmarshaler Unmarshaler) {
 	c.AddConfig(path, unmarshaler)
 }
 
+// Commands returns the list of the added commands
+func Commands() []*Command {
+	return c.Commands()
+}
+
 // Launch finds and executes the command
 func Launch() {
 	c.Launch()
