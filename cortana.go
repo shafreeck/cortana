@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"errors"
 	"fmt"
+	"io/ioutil"
 	"os"
 	"reflect"
 	"strconv"
@@ -12,10 +13,16 @@ import (
 	"github.com/google/btree"
 )
 
+// Unmarshaler unmarshals data to v
+type Unmarshaler interface {
+	Unmarshal(data []byte, v interface{}) error
+}
+
 // Cortana is the commander
 type Cortana struct {
 	ctx      context
 	commands commands
+	configs  []*config
 }
 
 // fatal exit the process with an error
@@ -32,6 +39,11 @@ func New() *Cortana {
 // AddCommand adds a command
 func (c *Cortana) AddCommand(path string, cmd func(), brief string) {
 	c.commands.t.ReplaceOrInsert(&command{Path: path, Proc: cmd, Brief: brief})
+}
+
+// AddConfig adds a config file
+func (c *Cortana) AddConfig(path string, unmarshaler Unmarshaler) {
+	c.configs = append(c.configs, &config{path: path, unmarshaler: unmarshaler})
 }
 
 // Launch and run commands
@@ -139,6 +151,7 @@ func (c *Cortana) Parse(v interface{}, opts ...ParseOption) {
 	}
 	c.collectFlags(v)
 	c.applyDefaultValues(v)
+	c.unmarshalConfigs(v)
 	c.unmarshalArgs(v)
 	c.checkRequires(v)
 }
@@ -332,7 +345,7 @@ func (c *Cortana) checkRequires(v interface{}) {
 	}
 	if i < len(nonflags) {
 		for _, nf := range nonflags[i:] {
-			if nf.required {
+			if nf.required && nf.rv.IsZero() {
 				fatal(errors.New("<" + nf.long + "> is required"))
 			}
 		}
@@ -352,6 +365,9 @@ func (c *Cortana) checkRequires(v interface{}) {
 			continue
 		}
 		if _, ok := argsIdx[f.short]; ok {
+			continue
+		}
+		if !f.rv.IsZero() {
 			continue
 		}
 
@@ -425,6 +441,27 @@ func (c *Cortana) unmarshalArgs(v interface{}) {
 	}
 }
 
+func (c *Cortana) unmarshalConfigs(v interface{}) {
+	for _, cfg := range c.configs {
+		file, err := os.Open(cfg.path)
+		if err != nil {
+			if os.IsNotExist(err) {
+				continue
+			}
+			fatal(err)
+		}
+		data, err := ioutil.ReadAll(file)
+		if err != nil {
+			fatal(err)
+		}
+
+		if err := cfg.unmarshaler.Unmarshal(data, v); err != nil {
+			fatal(err)
+		}
+		file.Close()
+	}
+}
+
 var c *Cortana
 
 func init() {
@@ -449,6 +486,11 @@ func Args() []string {
 // AddCommand adds a command
 func AddCommand(path string, cmd func(), brief string) {
 	c.AddCommand(path, cmd, brief)
+}
+
+// AddConfig adds a configuration file
+func AddConfig(path string, unmarshaler Unmarshaler) {
+	c.AddConfig(path, unmarshaler)
 }
 
 // Launch finds and executes the command
