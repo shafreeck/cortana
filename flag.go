@@ -42,6 +42,10 @@ func parseFlag(tag string, name string, rv reflect.Value) *flag {
 			if p == "-" {
 				f.required = true
 			} else {
+				// set to empty value
+				if p == `''` || p == `""` {
+					p = ""
+				}
 				f.defaultValue = p
 			}
 			state = description

@@ -325,14 +325,15 @@ func (c *Cortana) checkRequires(args []string, v interface{}) {
 	// check the nonflags
 	i := 0
 	for _, arg := range args {
-		if !strings.HasPrefix(arg, "-") {
-			i++
+		if strings.HasPrefix(arg, "-") {
+			break
 		}
+		i++
 	}
 	if i < len(nonflags) {
 		for _, nf := range nonflags[i:] {
 			if nf.required {
-				fatal(errors.New(nf.long + " is required"))
+				fatal(errors.New("<" + nf.long + "> is required"))
 			}
 		}
 
