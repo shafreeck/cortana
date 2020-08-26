@@ -31,7 +31,7 @@ func New() *Cortana {
 
 // AddCommand adds a command
 func (c *Cortana) AddCommand(path string, cmd func(), brief string) {
-	c.commands.t.ReplaceOrInsert(&command{path: path, brief: brief, proc: cmd})
+	c.commands.t.ReplaceOrInsert(&command{Path: path, Proc: cmd, Brief: brief})
 }
 
 // Launch and run commands
@@ -40,7 +40,7 @@ func (c *Cortana) Launch() {
 	if len(args) == 0 {
 		cmd := c.commands.get("")
 		if cmd != nil {
-			cmd.proc()
+			cmd.Proc()
 		} else {
 			c.Usage()
 		}
@@ -74,13 +74,13 @@ func (c *Cortana) Launch() {
 			}
 		} else {
 			cmd := commands[0]
-			if cmd.path == path {
+			if cmd.Path == path {
 				args := append(names[l-i:], flags...)
 				c.ctx = context{
 					name: path,
 					args: args,
 				}
-				commands[0].proc()
+				commands[0].Proc()
 			} else {
 				c.ctx = context{
 					name: path,
@@ -95,6 +95,18 @@ func (c *Cortana) Launch() {
 // Args returns the args in current context
 func (c *Cortana) Args() []string {
 	return c.ctx.args
+}
+
+// Commands returns all the available commands
+func (c *Cortana) Commands() []*Command {
+	var commands []*Command
+
+	// scan all the commands
+	cmds := c.commands.scan("")
+	for _, c := range cmds {
+		commands = append(commands, (*Command)(c))
+	}
+	return commands
 }
 
 // ParseOption is the option for Parse
@@ -139,14 +151,14 @@ func (c *Cortana) Usage() {
 	}
 	commands := c.commands.scan(c.ctx.name)
 	// ignore the command itself
-	if len(commands) > 0 && commands[0].path == c.ctx.name {
+	if len(commands) > 0 && commands[0].Path == c.ctx.name {
 		commands = commands[1:]
 	}
 	if len(commands) > 0 {
 		fmt.Println("Available commands:")
 		fmt.Println()
 		for _, cmd := range commands {
-			fmt.Printf("%-30s%s\n", cmd.path, cmd.brief)
+			fmt.Printf("%-30s%s\n", cmd.Path, cmd.Brief)
 		}
 		fmt.Println()
 	}
