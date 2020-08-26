@@ -137,7 +137,7 @@ func (c *Cortana) Parse(v interface{}, opts ...ParseOption) {
 	if v == nil {
 		return
 	}
-	c.ctx.desc.flags = c.collectFlags(v)
+	c.collectFlags(v)
 	c.unmarshalArgs(c.ctx.args, v)
 	c.checkRequires(c.ctx.args, v)
 }
@@ -172,7 +172,7 @@ func (c *Cortana) Usage() {
 	os.Exit(0)
 }
 
-func (c *Cortana) collectFlags(v interface{}) string {
+func (c *Cortana) collectFlags(v interface{}) {
 	flags, nonflags := parseCortanaTags(reflect.ValueOf(v))
 
 	w := bytes.NewBuffer(nil)
@@ -221,7 +221,7 @@ func (c *Cortana) collectFlags(v interface{}) string {
 		}
 	}
 
-	return w.String()
+	c.ctx.desc.flags = w.String()
 }
 
 func parseCortanaTags(rv reflect.Value) ([]*flag, []*nonflag) {
