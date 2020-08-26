@@ -1,11 +1,14 @@
 package cortana
 
-import "encoding/json"
+// Unmarshaler unmarshals data to v
+type Unmarshaler interface {
+	Unmarshal(data []byte, v interface{}) error
+}
 
-// JSONUnmarshaler is a json unmarshaler
-type JSONUnmarshaler struct{}
+// UnmarshalFunc turns a func to Unmarshaler
+type UnmarshalFunc func(data []byte, v interface{}) error
 
-// Unmarshal the json data
-func (u *JSONUnmarshaler) Unmarshal(data []byte, v interface{}) error {
-	return json.Unmarshal(data, v)
+// Unmarshal the data
+func (f UnmarshalFunc) Unmarshal(data []byte, v interface{}) error {
+	return f(data, v)
 }

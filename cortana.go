@@ -13,11 +13,6 @@ import (
 	"github.com/google/btree"
 )
 
-// Unmarshaler unmarshals data to v
-type Unmarshaler interface {
-	Unmarshal(data []byte, v interface{}) error
-}
-
 // Cortana is the commander
 type Cortana struct {
 	ctx      context
