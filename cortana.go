@@ -54,6 +54,9 @@ func (c *Cortana) Launch() {
 		if args[i][0] == '-' {
 			flags = append(flags, args[i])
 			if i+1 < len(args) {
+				if args[i+1][0] == '-' {
+					continue
+				}
 				flags = append(flags, args[i+1])
 				i++
 			}
