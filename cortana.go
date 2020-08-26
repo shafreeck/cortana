@@ -138,8 +138,9 @@ func (c *Cortana) Parse(v interface{}, opts ...ParseOption) {
 		return
 	}
 	c.collectFlags(v)
-	c.unmarshalArgs(c.ctx.args, v)
-	c.checkRequires(c.ctx.args, v)
+	c.applyDefaultValues(v)
+	c.unmarshalArgs(v)
+	c.checkRequires(v)
 }
 
 // Usage prints the usage
@@ -257,9 +258,6 @@ func parseCortanaTags(rv reflect.Value) ([]*flag, []*nonflag) {
 }
 func buildArgsIndex(flagsIdx map[string]*flag, rv reflect.Value) []*nonflag {
 	flags, nonflags := parseCortanaTags(rv)
-	if err := applyDefaultValues(flags, nonflags); err != nil {
-		fatal(err)
-	}
 	for _, f := range flags {
 		if f.long != "" {
 			flagsIdx[f.long] = f
@@ -270,13 +268,14 @@ func buildArgsIndex(flagsIdx map[string]*flag, rv reflect.Value) []*nonflag {
 	}
 	return nonflags
 }
-func applyDefaultValues(flags []*flag, nonflags []*nonflag) error {
+func (c *Cortana) applyDefaultValues(v interface{}) {
+	flags, nonflags := parseCortanaTags(reflect.ValueOf(v))
 	for _, nf := range nonflags {
 		if nf.required {
 			continue
 		}
 		if err := applyValue(&nf.rv, nf.defaultValue); err != nil {
-			return err
+			fatal(err)
 		}
 	}
 	for _, f := range flags {
@@ -284,10 +283,9 @@ func applyDefaultValues(flags []*flag, nonflags []*nonflag) error {
 			continue
 		}
 		if err := applyValue(&f.rv, f.defaultValue); err != nil {
-			return err
+			fatal(err)
 		}
 	}
-	return nil
 }
 func applyValue(v *reflect.Value, s string) error {
 	switch v.Kind() {
@@ -320,9 +318,10 @@ func applyValue(v *reflect.Value, s string) error {
 	}
 	return nil
 }
-func (c *Cortana) checkRequires(args []string, v interface{}) {
+func (c *Cortana) checkRequires(v interface{}) {
 	flags, nonflags := parseCortanaTags(reflect.ValueOf(v))
 
+	args := c.ctx.args
 	// check the nonflags
 	i := 0
 	for _, arg := range args {
@@ -366,10 +365,11 @@ func (c *Cortana) checkRequires(args []string, v interface{}) {
 }
 
 // unmarshalArgs fills v with the parsed args
-func (c *Cortana) unmarshalArgs(args []string, v interface{}) {
+func (c *Cortana) unmarshalArgs(v interface{}) {
 	flags := make(map[string]*flag)
 	nonflags := buildArgsIndex(flags, reflect.ValueOf(v))
 
+	args := c.ctx.args
 	for i := 0; i < len(args); i++ {
 		// print the usage and exit
 		if args[i] == "-h" || args[i] == "--help" {
