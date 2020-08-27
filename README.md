@@ -1,5 +1,5 @@
 # Cortana
-An extreme simple command line parsing library 
+An extremely easy to use command line parsing library 
 
 ## Codes
 ```go
@@ -35,15 +35,16 @@ You can say anything you want to anyone, the person can be
 selected by using the name, age or location. You can even combine these conditions
 together to choose the person more effectively
 
-Sub-commands:
-   say hello cortana
-   say hello
-   say
-Usage: say [text] [options]
+Available commands:
 
-  -n --name               say something to cortana. (default=cortana)
-     --age                say something to someone with certain age. (default=18)
-  -l --location           say something to someone lives in certain location. (default=beijing)
+say hello                     say hello to anyone
+say hello cortana             say hello to cortana
+
+Usage: say [options] <text>
+
+  -n, --name <name>              say something to cortana. (default=cortana)
+      --age <age>                say something to someone with certain age. (default=18)
+  -l, --location <location>      say something to someone lives in certain location. (default=beijing)
 
 > ./example say --name alice "Hello world"
 Say to alice who is 18 year old and lives in beijing now:
