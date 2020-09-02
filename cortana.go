@@ -44,15 +44,6 @@ func (c *Cortana) AddConfig(path string, unmarshaler Unmarshaler) {
 // Launch and run commands
 func (c *Cortana) Launch() {
 	args := os.Args[1:]
-	if len(args) == 0 {
-		cmd := c.commands.get("")
-		if cmd != nil {
-			cmd.Proc()
-		} else {
-			c.Usage()
-		}
-		return
-	}
 
 	// the arguments with '-' prefix are flags, others are names
 	var names []string
@@ -72,8 +63,18 @@ func (c *Cortana) Launch() {
 		}
 	}
 
-	// search for the command
+	// no sub commands
 	l := len(names)
+	if l == 0 {
+		cmd := c.commands.get("")
+		if cmd != nil {
+			cmd.Proc()
+		} else {
+			c.Usage()
+		}
+	}
+
+	// search for the command
 	for i := range names {
 		path := strings.Join(names[0:l-i], " ")
 		commands := c.commands.scan(path)
