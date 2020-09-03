@@ -291,6 +291,9 @@ func (c *Cortana) applyDefaultValues(v interface{}) {
 		if f.required {
 			continue
 		}
+		if f.rv.Kind() == reflect.Slice && f.defaultValue == "nil" {
+			continue
+		}
 		if err := applyValue(f.rv, f.defaultValue); err != nil {
 			fatal(err)
 		}
