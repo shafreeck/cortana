@@ -283,7 +283,7 @@ func (c *Cortana) applyDefaultValues(v interface{}) {
 		if nf.required {
 			continue
 		}
-		if err := applyValue(&nf.rv, nf.defaultValue); err != nil {
+		if err := applyValue(nf.rv, nf.defaultValue); err != nil {
 			fatal(err)
 		}
 	}
@@ -291,12 +291,12 @@ func (c *Cortana) applyDefaultValues(v interface{}) {
 		if f.required {
 			continue
 		}
-		if err := applyValue(&f.rv, f.defaultValue); err != nil {
+		if err := applyValue(f.rv, f.defaultValue); err != nil {
 			fatal(err)
 		}
 	}
 }
-func applyValue(v *reflect.Value, s string) error {
+func applyValue(v reflect.Value, s string) error {
 	switch v.Kind() {
 	case reflect.String:
 		v.SetString(s)
@@ -324,6 +324,12 @@ func applyValue(v *reflect.Value, s string) error {
 			return err
 		}
 		v.SetBool(b)
+	case reflect.Slice:
+		e := reflect.New(v.Type().Elem()).Elem()
+		if err := applyValue(e, s); err != nil {
+			return err
+		}
+		v.Set(reflect.Append(v, e))
 	}
 	return nil
 }
@@ -392,7 +398,7 @@ func (c *Cortana) unmarshalArgs(v interface{}) {
 			if len(nonflags) == 0 {
 				fatal(errors.New("unknown argument: " + args[i]))
 			}
-			if err := applyValue(&nonflags[0].rv, args[i]); err != nil {
+			if err := applyValue(nonflags[0].rv, args[i]); err != nil {
 				fatal(err)
 			}
 			nonflags = nonflags[1:]
@@ -401,7 +407,7 @@ func (c *Cortana) unmarshalArgs(v interface{}) {
 
 		var key, value string
 		if strings.Index(args[i], "=") > 0 {
-			kvs := strings.Split(args[i], "=")
+			kvs := strings.SplitN(args[i], "=", 1)
 			key, value = kvs[0], kvs[1]
 		} else {
 			key = args[i]
@@ -409,7 +415,7 @@ func (c *Cortana) unmarshalArgs(v interface{}) {
 		flag, ok := flags[key]
 		if ok {
 			if value != "" {
-				if err := applyValue(&flag.rv, value); err != nil {
+				if err := applyValue(flag.rv, value); err != nil {
 					fatal(err)
 				}
 				continue
@@ -417,7 +423,7 @@ func (c *Cortana) unmarshalArgs(v interface{}) {
 			if i+1 < len(args) {
 				next := args[i+1]
 				if next[0] != '-' {
-					if err := applyValue(&flag.rv, next); err != nil {
+					if err := applyValue(flag.rv, next); err != nil {
 						fatal(err)
 					}
 					i++
@@ -425,7 +431,7 @@ func (c *Cortana) unmarshalArgs(v interface{}) {
 				}
 			}
 			if flag.rv.Kind() == reflect.Bool {
-				if err := applyValue(&flag.rv, "true"); err != nil {
+				if err := applyValue(flag.rv, "true"); err != nil {
 					fatal(err)
 				}
 			} else {
