@@ -397,7 +397,7 @@ func (c *Cortana) unmarshalArgs(v interface{}) {
 			c.Usage()
 		}
 		// handle nonflags
-		if !strings.HasPrefix(args[i], "-") {
+		if !strings.HasPrefix(args[i], "-") && len(nonflags) > 0 {
 			if err := applyValue(nonflags[0].rv, args[i]); err != nil {
 				fatal(err)
 			}
