@@ -68,6 +68,10 @@ func (c *Cortana) Launch() {
 	if l == 0 {
 		cmd := c.commands.get("")
 		if cmd != nil {
+			c.ctx = context{
+				name: "",
+				args: args,
+			}
 			cmd.Proc()
 		} else {
 			c.Usage()
