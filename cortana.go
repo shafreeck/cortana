@@ -45,8 +45,8 @@ func (c *Cortana) AddConfig(path string, unmarshaler Unmarshaler) {
 func (c *Cortana) Launch() {
 	args := os.Args[1:]
 
-	// the arguments with '-' prefix are flags, others are names
-	var names []string
+	// the arguments with '-' prefix are flags, others are nonflags
+	var nonflags []string
 	var flags []string
 	for i := 0; i < len(args); i++ {
 		if args[i][0] == '-' {
@@ -59,12 +59,12 @@ func (c *Cortana) Launch() {
 				i++
 			}
 		} else {
-			names = append(names, args[i])
+			nonflags = append(nonflags, args[i])
 		}
 	}
 
 	// no sub commands
-	l := len(names)
+	l := len(nonflags)
 	if l == 0 {
 		cmd := c.commands.get("")
 		if cmd != nil {
@@ -79,18 +79,18 @@ func (c *Cortana) Launch() {
 	}
 
 	// search for the command
-	for i := range names {
-		path := strings.Join(names[0:l-i], " ")
+	for i := range nonflags {
+		path := strings.Join(nonflags[0:l-i], " ")
 		commands := c.commands.scan(path)
 		if len(commands) == 0 {
 			// no more commands in path
 			if i+1 == l {
-				fatal(errors.New("unknown command pattern: " + strings.Join(names, " ")))
+				fatal(errors.New("unknown command pattern: " + strings.Join(nonflags, " ")))
 			}
 		} else {
 			cmd := commands[0]
 			if cmd.Path == path {
-				args := append(names[l-i:], flags...)
+				args := append(nonflags[l-i:], flags...)
 				c.ctx = context{
 					name: path,
 					args: args,
