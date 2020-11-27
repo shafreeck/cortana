@@ -47,7 +47,6 @@ func (c *Cortana) Launch() {
 	if cmd == nil {
 		c.Usage()
 	}
-	fmt.Println(cmd, args)
 	c.ctx = context{
 		name: cmd.Path,
 		args: args,
@@ -148,7 +147,6 @@ func (c *Cortana) searchCommand(args []string) (*Command, []string) {
 			commands := c.commands.scan(path)
 			if len(commands) > 0 {
 				if commands[0].Path == path {
-					cmdArgs = append(cmdArgs, maybeArgs...)
 					maybeArgs = maybeArgs[:0]
 					cmd = commands[0]
 					st = StateCommand
