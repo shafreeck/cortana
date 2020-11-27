@@ -43,68 +43,142 @@ func (c *Cortana) AddConfig(path string, unmarshaler Unmarshaler) {
 
 // Launch and run commands
 func (c *Cortana) Launch() {
-	args := os.Args[1:]
+	cmd, args := c.searchCommand(os.Args[1:])
+	if cmd == nil {
+		c.Usage()
+	}
+	fmt.Println(cmd, args)
+	c.ctx = context{
+		name: cmd.Path,
+		args: args,
+	}
+	cmd.Proc()
+}
 
-	// the arguments with '-' prefix are flags, others are nonflags
-	var nonflags []string
-	var flags []string
+func (c *Cortana) searchCommand(args []string) (*Command, []string) {
+	var cmdArgs []string
+	var maybeArgs []string
+	var path string
+	const (
+		StateCommand = iota
+		StateCommandPrefix
+		StateOptionFlag
+		StateOptionArg
+		StateCommandArg
+	)
+	st := StateCommand
+	cmd := c.commands.get(path)
 	for i := 0; i < len(args); i++ {
-		if args[i][0] == '-' {
-			flags = append(flags, args[i])
-			if i+1 < len(args) {
-				if args[i+1][0] == '-' {
+		arg := args[i]
+		switch st {
+		case StateCommand:
+			if strings.HasPrefix(arg, "-") {
+				st = StateOptionFlag
+				cmdArgs = append(cmdArgs, arg)
+				continue
+			}
+			path = strings.TrimSpace(path + " " + arg)
+			commands := c.commands.scan(path)
+			if len(commands) > 0 {
+				if commands[0].Path == path {
+					cmdArgs = append(cmdArgs, maybeArgs...)
+					maybeArgs = maybeArgs[:0]
+					cmd = commands[0]
+					st = StateCommand
 					continue
 				}
-				flags = append(flags, args[i+1])
-				i++
+				maybeArgs = append(maybeArgs, arg)
+				st = StateCommandPrefix
+				continue
 			}
-		} else {
-			nonflags = append(nonflags, args[i])
-		}
-	}
+			if cmd != nil {
+				cmdArgs = append(cmdArgs, arg)
+				st = StateCommandArg
+				continue
+			}
+			fatal(errors.New("unknown command pattern: " + path))
 
-	// no sub commands
-	l := len(nonflags)
-	if l == 0 {
-		cmd := c.commands.get("")
-		if cmd != nil {
-			c.ctx = context{
-				name: "",
-				args: args,
+		case StateCommandPrefix:
+			if strings.HasPrefix(arg, "-") {
+				cmdArgs = append(cmdArgs, arg)
+				continue
 			}
-			cmd.Proc()
-		} else {
-			c.Usage()
-		}
-	}
 
-	// search for the command
-	for i := range nonflags {
-		path := strings.Join(nonflags[0:l-i], " ")
-		commands := c.commands.scan(path)
-		if len(commands) == 0 {
-			// no more commands in path
-			if i+1 == l {
-				fatal(errors.New("unknown command pattern: " + strings.Join(nonflags, " ")))
-			}
-		} else {
-			cmd := commands[0]
-			if cmd.Path == path {
-				args := append(nonflags[l-i:], flags...)
-				c.ctx = context{
-					name: path,
-					args: args,
+			path = strings.TrimSpace(path + " " + arg)
+			commands := c.commands.scan(path)
+			if len(commands) > 0 {
+				if commands[0].Path == path {
+					cmdArgs = append(cmdArgs, maybeArgs...)
+					maybeArgs = maybeArgs[:0]
+					cmd = commands[0]
+					st = StateCommand
+					continue
 				}
-				commands[0].Proc()
-			} else {
-				c.ctx = context{
-					name: path,
-				}
-				c.Usage()
+				continue
 			}
-			return
+
+		case StateOptionFlag:
+			if strings.HasPrefix(arg, "-") {
+				cmdArgs = append(cmdArgs, arg)
+				continue
+			}
+
+			path = strings.TrimSpace(path + " " + args[i])
+			commands := c.commands.scan(path)
+			if len(commands) > 0 {
+				if commands[0].Path == path {
+					cmdArgs = append(cmdArgs, maybeArgs...)
+					maybeArgs = maybeArgs[:0]
+					cmd = commands[0]
+					st = StateCommand
+					continue
+				}
+				maybeArgs = append(maybeArgs, arg)
+				st = StateCommandPrefix
+				continue
+			}
+			cmdArgs = append(cmdArgs, arg)
+			st = StateOptionArg
+
+		case StateOptionArg:
+			if strings.HasPrefix(arg, "-") {
+				cmdArgs = append(cmdArgs, arg)
+				st = StateOptionFlag
+				continue
+			}
+
+			path = strings.TrimSpace(path + " " + args[i])
+			commands := c.commands.scan(path)
+			if len(commands) > 0 {
+				if commands[0].Path == path {
+					cmdArgs = append(cmdArgs, maybeArgs...)
+					maybeArgs = maybeArgs[:0]
+					cmd = commands[0]
+					st = StateCommand
+					continue
+				}
+				maybeArgs = append(maybeArgs, arg)
+				st = StateCommandPrefix
+				continue
+			}
+			cmdArgs = append(cmdArgs, arg)
+			st = StateCommandArg
+
+		case StateCommandArg:
+			if cmd == nil {
+				fatal(errors.New("unknown command pattern: " + path))
+				continue
+			}
+			if strings.HasPrefix(arg, "-") {
+				cmdArgs = append(cmdArgs, arg)
+				st = StateOptionFlag
+				continue
+			}
+			cmdArgs = append(cmdArgs, arg)
 		}
 	}
+	cmdArgs = append(cmdArgs, maybeArgs...)
+	return (*Command)(cmd), cmdArgs
 }
 
 // Args returns the args in current context
@@ -424,6 +498,12 @@ func (c *Cortana) unmarshalArgs(v interface{}) {
 				}
 				continue
 			}
+			if flag.rv.Kind() == reflect.Bool {
+				if err := applyValue(flag.rv, "true"); err != nil {
+					fatal(err)
+				}
+				continue
+			}
 			if i+1 < len(args) {
 				next := args[i+1]
 				if next[0] != '-' {
@@ -431,16 +511,10 @@ func (c *Cortana) unmarshalArgs(v interface{}) {
 						fatal(err)
 					}
 					i++
-					continue
 				}
+				continue
 			}
-			if flag.rv.Kind() == reflect.Bool {
-				if err := applyValue(flag.rv, "true"); err != nil {
-					fatal(err)
-				}
-			} else {
-				fatal(errors.New(key + " requires an argument"))
-			}
+			fatal(errors.New(key + " requires an argument"))
 		} else {
 			fatal(errors.New("unknown argument: " + args[i]))
 		}
@@ -508,3 +582,7 @@ func Commands() []*Command {
 func Launch() {
 	c.Launch()
 }
+
+//
+//  cmd -o v -o v -o -o v -o sub sub -o arg arg arg
+//
