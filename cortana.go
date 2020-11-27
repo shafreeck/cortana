@@ -81,7 +81,6 @@ func (c *Cortana) searchCommand(args []string) (*Command, []string) {
 			commands := c.commands.scan(path)
 			if len(commands) > 0 {
 				if commands[0].Path == path {
-					cmdArgs = append(cmdArgs, maybeArgs...)
 					maybeArgs = maybeArgs[:0]
 					cmd = commands[0]
 					st = StateCommand
@@ -108,7 +107,6 @@ func (c *Cortana) searchCommand(args []string) (*Command, []string) {
 			commands := c.commands.scan(path)
 			if len(commands) > 0 {
 				if commands[0].Path == path {
-					cmdArgs = append(cmdArgs, maybeArgs...)
 					maybeArgs = maybeArgs[:0]
 					cmd = commands[0]
 					st = StateCommand
@@ -127,7 +125,6 @@ func (c *Cortana) searchCommand(args []string) (*Command, []string) {
 			commands := c.commands.scan(path)
 			if len(commands) > 0 {
 				if commands[0].Path == path {
-					cmdArgs = append(cmdArgs, maybeArgs...)
 					maybeArgs = maybeArgs[:0]
 					cmd = commands[0]
 					st = StateCommand
