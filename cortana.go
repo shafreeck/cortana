@@ -36,6 +36,11 @@ func (c *Cortana) AddCommand(path string, cmd func(), brief string) {
 	c.commands.t.ReplaceOrInsert(&command{Path: path, Proc: cmd, Brief: brief})
 }
 
+// AddRootCommand adds the command without sub path
+func (c *Cortana) AddRootCommand(cmd func()) {
+	c.AddCommand("", cmd, "")
+}
+
 // AddConfig adds a config file
 func (c *Cortana) AddConfig(path string, unmarshaler Unmarshaler) {
 	c.configs = append(c.configs, &config{path: path, unmarshaler: unmarshaler})
@@ -571,6 +576,11 @@ func Args() []string {
 // AddCommand adds a command
 func AddCommand(path string, cmd func(), brief string) {
 	c.AddCommand(path, cmd, brief)
+}
+
+// AddRootCommand adds the command without sub path
+func AddRootCommand(cmd func()) {
+	c.AddRootCommand(cmd)
 }
 
 // AddConfig adds a configuration file
