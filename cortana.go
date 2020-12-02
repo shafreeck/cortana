@@ -48,18 +48,14 @@ func (c *Cortana) AddConfig(path string, unmarshaler Unmarshaler) {
 
 // Launch and run commands
 func (c *Cortana) Launch() {
-	cmd, args := c.searchCommand(os.Args[1:])
+	cmd := c.searchCommand(os.Args[1:])
 	if cmd == nil {
 		c.Usage()
-	}
-	c.ctx = context{
-		name: cmd.Path,
-		args: args,
 	}
 	cmd.Proc()
 }
 
-func (c *Cortana) searchCommand(args []string) (*Command, []string) {
+func (c *Cortana) searchCommand(args []string) *Command {
 	var cmdArgs []string
 	var maybeArgs []string
 	var path string
@@ -72,6 +68,7 @@ func (c *Cortana) searchCommand(args []string) (*Command, []string) {
 	)
 	st := StateCommand
 	cmd := c.commands.get(path)
+	available := c.commands.scan(path)
 	for i := 0; i < len(args); i++ {
 		arg := args[i]
 		switch st {
@@ -91,6 +88,7 @@ func (c *Cortana) searchCommand(args []string) (*Command, []string) {
 					st = StateCommand
 					continue
 				}
+				available = commands
 				maybeArgs = append(maybeArgs, arg)
 				st = StateCommandPrefix
 				continue
@@ -119,6 +117,7 @@ func (c *Cortana) searchCommand(args []string) (*Command, []string) {
 					st = StateCommand
 					continue
 				}
+				available = commands
 				continue
 			}
 
@@ -138,6 +137,7 @@ func (c *Cortana) searchCommand(args []string) (*Command, []string) {
 					st = StateCommand
 					continue
 				}
+				available = commands
 				maybeArgs = append(maybeArgs, arg)
 				st = StateCommandPrefix
 				continue
@@ -162,6 +162,7 @@ func (c *Cortana) searchCommand(args []string) (*Command, []string) {
 					st = StateCommand
 					continue
 				}
+				available = commands
 				maybeArgs = append(maybeArgs, arg)
 				st = StateCommandPrefix
 				continue
@@ -180,10 +181,16 @@ func (c *Cortana) searchCommand(args []string) (*Command, []string) {
 	}
 
 	cmdArgs = append(cmdArgs, maybeArgs...)
-	c.ctx = context{
-		name: path,
+	name := path
+	if cmd != nil {
+		name = cmd.Path
 	}
-	return (*Command)(cmd), cmdArgs
+	c.ctx = context{
+		name:      name,
+		args:      cmdArgs,
+		available: available,
+	}
+	return (*Command)(cmd)
 }
 
 // Args returns the args in current context
@@ -236,7 +243,9 @@ func (c *Cortana) Usage() {
 		fmt.Println(c.ctx.desc.description)
 		fmt.Println()
 	}
-	commands := c.commands.scan(c.ctx.name)
+
+	//  print the aliailable commands
+	commands := c.ctx.available
 	// ignore the command itself
 	if len(commands) > 0 && commands[0].Path == c.ctx.name {
 		commands = commands[1:]
