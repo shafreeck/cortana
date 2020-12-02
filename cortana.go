@@ -322,6 +322,9 @@ func parseCortanaTags(rv reflect.Value) ([]*flag, []*nonflag) {
 		}
 
 		tag := ft.Tag.Get("cortana")
+		if tag == "" {
+			tag = ft.Tag.Get("lsdd") // lsdd is short for (long short default description)
+		}
 		f := parseFlag(tag, ft.Name, fv)
 		if strings.HasPrefix(f.long, "-") {
 			if f.long != "-" || f.short != "-" {
