@@ -76,9 +76,10 @@ func (c *Cortana) searchCommand(args []string) (*Command, []string) {
 				cmdArgs = append(cmdArgs, arg)
 				continue
 			}
-			path = strings.TrimSpace(path + " " + arg)
-			commands := c.commands.scan(path)
+			p := strings.TrimSpace(path + " " + arg)
+			commands := c.commands.scan(p)
 			if len(commands) > 0 {
+				path = p
 				if commands[0].Path == path {
 					maybeArgs = maybeArgs[:0]
 					cmd = commands[0]
@@ -98,13 +99,15 @@ func (c *Cortana) searchCommand(args []string) (*Command, []string) {
 
 		case StateCommandPrefix:
 			if strings.HasPrefix(arg, "-") {
+				st = StateOptionFlag
 				cmdArgs = append(cmdArgs, arg)
 				continue
 			}
 
-			path = strings.TrimSpace(path + " " + arg)
-			commands := c.commands.scan(path)
+			p := strings.TrimSpace(path + " " + arg)
+			commands := c.commands.scan(p)
 			if len(commands) > 0 {
+				path = p
 				if commands[0].Path == path {
 					maybeArgs = maybeArgs[:0]
 					cmd = commands[0]
@@ -120,9 +123,10 @@ func (c *Cortana) searchCommand(args []string) (*Command, []string) {
 				continue
 			}
 
-			path = strings.TrimSpace(path + " " + args[i])
-			commands := c.commands.scan(path)
+			p := strings.TrimSpace(path + " " + args[i])
+			commands := c.commands.scan(p)
 			if len(commands) > 0 {
+				path = p
 				if commands[0].Path == path {
 					maybeArgs = maybeArgs[:0]
 					cmd = commands[0]
@@ -143,9 +147,10 @@ func (c *Cortana) searchCommand(args []string) (*Command, []string) {
 				continue
 			}
 
-			path = strings.TrimSpace(path + " " + args[i])
-			commands := c.commands.scan(path)
+			p := strings.TrimSpace(path + " " + args[i])
+			commands := c.commands.scan(p)
 			if len(commands) > 0 {
+				path = p
 				if commands[0].Path == path {
 					maybeArgs = maybeArgs[:0]
 					cmd = commands[0]
@@ -172,7 +177,11 @@ func (c *Cortana) searchCommand(args []string) (*Command, []string) {
 			cmdArgs = append(cmdArgs, arg)
 		}
 	}
+
 	cmdArgs = append(cmdArgs, maybeArgs...)
+	c.ctx = context{
+		name: path,
+	}
 	return (*Command)(cmd), cmdArgs
 }
 
