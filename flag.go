@@ -20,7 +20,7 @@ type nonflag flag
 
 func parseFlag(tag string, name string, rv reflect.Value) *flag {
 	f := &flag{name: name, rv: rv}
-	parts := strings.Fields(tag)
+	parts := strings.Split(tag, ",")
 
 	const (
 		long = iota
@@ -30,13 +30,13 @@ func parseFlag(tag string, name string, rv reflect.Value) *flag {
 	)
 	state := long
 	for i := 0; i < len(parts); i++ {
-		p := parts[i]
+		p := strings.TrimSpace(parts[i])
 		switch state {
 		case long:
-			f.long = parts[i]
+			f.long = p
 			state = short
 		case short:
-			f.short = parts[i]
+			f.short = p
 			state = defaultValue
 		case defaultValue:
 			if p == "-" {
@@ -50,7 +50,7 @@ func parseFlag(tag string, name string, rv reflect.Value) *flag {
 			}
 			state = description
 		case description:
-			f.description = strings.Join(parts[i:], " ")
+			f.description = p
 			return f
 		}
 	}

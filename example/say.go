@@ -23,10 +23,10 @@ func sayAnything() {
 selected by using the name, age or location. You can even combine these conditions
 together to choose the person more effectively`)
 	greeting := struct { //format: --long -short defaultValue description
-		Name     string `cortana:"--name -n cortana say something to cortana"`
-		Age      int    `cortana:"--age - 18 say something to someone with certain age"`
-		Location string `cortana:"--location -l beijing say something to someone lives in certain location"`
-		Text     string `cortana:"text - -"`
+		Name     string `lsdd:"--name, -n, cortana, say something to cortana"`
+		Age      int    `cortana:"--age, -, 18, say something to someone with certain age"`
+		Location string `cortana:"--location, -l, beijing, say something to someone lives in certain location"`
+		Text     string `cortana:"text, -, -"`
 	}{}
 	cortana.Parse(&greeting)
 
