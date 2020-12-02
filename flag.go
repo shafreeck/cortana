@@ -50,7 +50,7 @@ func parseFlag(tag string, name string, rv reflect.Value) *flag {
 			}
 			state = description
 		case description:
-			f.description = p
+			f.description = strings.Join(parts[i:], ",")
 			return f
 		}
 	}
