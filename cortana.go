@@ -202,28 +202,8 @@ func (c *Cortana) Commands() []*Command {
 	return commands
 }
 
-// ParseOption is the option for Parse
-type ParseOption func(d *desc)
-
-// WithTitle parses arguments with title
-func WithTitle(s string) ParseOption {
-	return func(d *desc) {
-		d.title = s
-	}
-}
-
-// WithDescription pares arguments with description
-func WithDescription(s string) ParseOption {
-	return func(d *desc) {
-		d.description = s
-	}
-}
-
 // Parse the flags
-func (c *Cortana) Parse(v interface{}, opts ...ParseOption) {
-	for _, opt := range opts {
-		opt(&c.ctx.desc)
-	}
+func (c *Cortana) Parse(v interface{}) {
 	if v == nil {
 		return
 	}
@@ -232,6 +212,17 @@ func (c *Cortana) Parse(v interface{}, opts ...ParseOption) {
 	c.unmarshalConfigs(v)
 	c.unmarshalArgs(v)
 	c.checkRequires(v)
+}
+
+// Title set the title for the command
+func (c *Cortana) Title(text string) {
+	c.ctx.desc.title = text
+}
+
+// Description set the description for the command, it always be helpful
+// to describe about the details of command
+func (c *Cortana) Description(text string) {
+	c.ctx.desc.description = text
 }
 
 // Usage prints the usage
@@ -553,8 +544,19 @@ func init() {
 }
 
 // Parse the arguemnts into a struct
-func Parse(v interface{}, opts ...ParseOption) {
-	c.Parse(v, opts...)
+func Parse(v interface{}) {
+	c.Parse(v)
+}
+
+// Title set the title for the command
+func Title(text string) {
+	c.Title(text)
+}
+
+// Description set the description for the command, it always be helpful
+// to describe about the details of command
+func Description(text string) {
+	c.Description(text)
 }
 
 // Usage prints the usage and exits
@@ -586,7 +588,3 @@ func Commands() []*Command {
 func Launch() {
 	c.Launch()
 }
-
-//
-//  cmd -o v -o v -o -o v -o sub sub -o arg arg arg
-//
