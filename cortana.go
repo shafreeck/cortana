@@ -95,7 +95,7 @@ func (c *Cortana) searchCommand(args []string) (*Command, []string) {
 				st = StateCommandArg
 				continue
 			}
-			fatal(errors.New("unknown command pattern: " + path))
+			fatal(errors.New("unknown command: " + p))
 
 		case StateCommandPrefix:
 			if strings.HasPrefix(arg, "-") {
@@ -165,10 +165,6 @@ func (c *Cortana) searchCommand(args []string) (*Command, []string) {
 			st = StateCommandArg
 
 		case StateCommandArg:
-			if cmd == nil {
-				fatal(errors.New("unknown command pattern: " + path))
-				continue
-			}
 			if strings.HasPrefix(arg, "-") {
 				cmdArgs = append(cmdArgs, arg)
 				st = StateOptionFlag
