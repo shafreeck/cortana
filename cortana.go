@@ -68,7 +68,6 @@ func (c *Cortana) searchCommand(args []string) *Command {
 	)
 	st := StateCommand
 	cmd := c.commands.get(path)
-	available := c.commands.scan(path)
 	for i := 0; i < len(args); i++ {
 		arg := args[i]
 		switch st {
@@ -88,7 +87,6 @@ func (c *Cortana) searchCommand(args []string) *Command {
 					st = StateCommand
 					continue
 				}
-				available = commands
 				maybeArgs = append(maybeArgs, arg)
 				st = StateCommandPrefix
 				continue
@@ -117,7 +115,6 @@ func (c *Cortana) searchCommand(args []string) *Command {
 					st = StateCommand
 					continue
 				}
-				available = commands
 				continue
 			}
 
@@ -137,7 +134,6 @@ func (c *Cortana) searchCommand(args []string) *Command {
 					st = StateCommand
 					continue
 				}
-				available = commands
 				maybeArgs = append(maybeArgs, arg)
 				st = StateCommandPrefix
 				continue
@@ -162,7 +158,6 @@ func (c *Cortana) searchCommand(args []string) *Command {
 					st = StateCommand
 					continue
 				}
-				available = commands
 				maybeArgs = append(maybeArgs, arg)
 				st = StateCommandPrefix
 				continue
@@ -184,12 +179,10 @@ func (c *Cortana) searchCommand(args []string) *Command {
 	name := path
 	if cmd != nil {
 		name = cmd.Path
-		available = nil
 	}
 	c.ctx = context{
-		name:      name,
-		args:      cmdArgs,
-		available: available,
+		name: name,
+		args: cmdArgs,
 	}
 	return (*Command)(cmd)
 }
@@ -246,7 +239,7 @@ func (c *Cortana) Usage() {
 	}
 
 	//  print the aliailable commands
-	commands := c.ctx.available
+	commands := c.commands.scan(c.ctx.name)
 	// ignore the command itself
 	if len(commands) > 0 && commands[0].Path == c.ctx.name {
 		commands = commands[1:]

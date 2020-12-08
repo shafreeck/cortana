@@ -8,8 +8,7 @@ type desc struct {
 }
 
 type context struct {
-	name      string
-	args      []string
-	desc      desc
-	available []*command // the avaliable commands for this context
+	name string
+	args []string
+	desc desc
 }
