@@ -184,6 +184,7 @@ func (c *Cortana) searchCommand(args []string) *Command {
 	name := path
 	if cmd != nil {
 		name = cmd.Path
+		available = nil
 	}
 	c.ctx = context{
 		name:      name,
