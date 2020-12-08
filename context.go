@@ -8,7 +8,8 @@ type desc struct {
 }
 
 type context struct {
-	name string
-	args []string
-	desc desc
+	name    string
+	args    []string
+	desc    desc
+	longest string // the longest path has been searched
 }

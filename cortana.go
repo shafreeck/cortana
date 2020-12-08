@@ -181,8 +181,9 @@ func (c *Cortana) searchCommand(args []string) *Command {
 		name = cmd.Path
 	}
 	c.ctx = context{
-		name: name,
-		args: cmdArgs,
+		name:    name,
+		args:    cmdArgs,
+		longest: path,
 	}
 	return (*Command)(cmd)
 }
@@ -239,7 +240,7 @@ func (c *Cortana) Usage() {
 	}
 
 	//  print the aliailable commands
-	commands := c.commands.scan(c.ctx.name)
+	commands := c.commands.scan(c.ctx.longest)
 	// ignore the command itself
 	if len(commands) > 0 && commands[0].Path == c.ctx.name {
 		commands = commands[1:]
