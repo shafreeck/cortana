@@ -11,6 +11,8 @@ type Command struct {
 	Path  string
 	Proc  func()
 	Brief string
+	Alias bool
+	order int // the order is the sequence of invoking add command
 }
 
 type command Command
@@ -41,4 +43,17 @@ func (c commands) get(path string) *command {
 		return i.(*command)
 	}
 	return nil
+}
+
+// orderedCommands keep the order of adding a command
+type orderedCommands []*command
+
+func (cmds orderedCommands) Len() int {
+	return len(cmds)
+}
+func (cmds orderedCommands) Less(i, j int) bool {
+	return cmds[i].order < cmds[j].order
+}
+func (cmds orderedCommands) Swap(i, j int) {
+	cmds[i], cmds[j] = cmds[j], cmds[i]
 }

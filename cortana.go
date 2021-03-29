@@ -7,6 +7,7 @@ import (
 	"io/ioutil"
 	"os"
 	"reflect"
+	"sort"
 	"strconv"
 	"strings"
 
@@ -19,6 +20,7 @@ type Cortana struct {
 	commands commands
 	configs  []*config
 	envs     []EnvUnmarshaler
+	seq      int
 }
 
 // fatal exit the process with an error
@@ -34,7 +36,8 @@ func New() *Cortana {
 
 // AddCommand adds a command
 func (c *Cortana) AddCommand(path string, cmd func(), brief string) {
-	c.commands.t.ReplaceOrInsert(&command{Path: path, Proc: cmd, Brief: brief})
+	c.commands.t.ReplaceOrInsert(&command{Path: path, Proc: cmd, Brief: brief, order: c.seq})
+	c.seq++
 }
 
 // AddRootCommand adds the command without sub path
@@ -254,10 +257,24 @@ func (c *Cortana) Usage() {
 	if len(commands) > 0 {
 		fmt.Println("Available commands:")
 		fmt.Println()
+		sort.Sort(orderedCommands(commands))
+
+		cmds := bytes.NewBuffer(nil)
+		alias := bytes.NewBuffer(nil)
 		for _, cmd := range commands {
-			fmt.Printf("%-30s%s\n", cmd.Path, cmd.Brief)
+			writeString := cmds.WriteString
+			if cmd.Alias {
+				writeString = alias.WriteString
+			}
+			writeString(fmt.Sprintf("%-30s%s\n", cmd.Path, cmd.Brief))
 		}
+		fmt.Println(cmds.String())
 		fmt.Println()
+		if alias.Len() > 0 {
+			fmt.Println("Alias commands:")
+			fmt.Println()
+			fmt.Println(alias.String())
+		}
 	}
 
 	if c.ctx.desc.flags != "" {
@@ -270,13 +287,16 @@ func (c *Cortana) Alias(name, definition string) {
 	processAlias := func() {
 		c.alias(definition)
 	}
-	c.AddCommand(name, processAlias, fmt.Sprintf(`alias %s="%s"`, name, definition))
+	alias := fmt.Sprintf("alias %-5s = %-20s", name, definition)
+	c.commands.t.ReplaceOrInsert(&command{Path: name, Proc: processAlias, Brief: alias, order: c.seq, Alias: true})
+	c.seq++
 }
 func (c *Cortana) alias(definition string) {
 	args := strings.Fields(definition)
 	cmd := c.searchCommand(append(args, c.ctx.args...))
 	if cmd == nil {
 		c.Usage()
+		return
 	}
 	cmd.Proc()
 }
