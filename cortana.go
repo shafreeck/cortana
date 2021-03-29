@@ -18,6 +18,7 @@ type Cortana struct {
 	ctx      context
 	commands commands
 	configs  []*config
+	envs     []EnvUnmarshaler
 }
 
 // fatal exit the process with an error
@@ -44,6 +45,10 @@ func (c *Cortana) AddRootCommand(cmd func()) {
 // AddConfig adds a config file
 func (c *Cortana) AddConfig(path string, unmarshaler Unmarshaler) {
 	c.configs = append(c.configs, &config{path: path, unmarshaler: unmarshaler})
+}
+
+func (c *Cortana) AddEnvUnmarshaler(unmarshaler EnvUnmarshaler) {
+	c.envs = append(c.envs, unmarshaler)
 }
 
 // Launch and run commands
@@ -213,6 +218,7 @@ func (c *Cortana) Parse(v interface{}) {
 	c.collectFlags(v)
 	c.applyDefaultValues(v)
 	c.unmarshalConfigs(v)
+	c.unmarshalEnvs(v)
 	c.unmarshalArgs(v)
 	c.checkRequires(v)
 }
@@ -542,6 +548,14 @@ func (c *Cortana) unmarshalConfigs(v interface{}) {
 			fatal(err)
 		}
 		file.Close()
+	}
+}
+
+func (c *Cortana) unmarshalEnvs(v interface{}) {
+	for _, u := range c.envs {
+		if err := u.Unmarshal(v); err != nil {
+			fatal(err)
+		}
 	}
 }
 
