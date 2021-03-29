@@ -266,6 +266,21 @@ func (c *Cortana) Usage() {
 	os.Exit(0)
 }
 
+func (c *Cortana) Alias(name, definition string) {
+	processAlias := func() {
+		c.alias(definition)
+	}
+	c.AddCommand(name, processAlias, fmt.Sprintf(`alias %s="%s"`, name, definition))
+}
+func (c *Cortana) alias(definition string) {
+	args := strings.Fields(definition)
+	cmd := c.searchCommand(append(args, c.ctx.args...))
+	if cmd == nil {
+		c.Usage()
+	}
+	cmd.Proc()
+}
+
 func (c *Cortana) collectFlags(v interface{}) {
 	flags, nonflags := parseCortanaTags(reflect.ValueOf(v))
 
@@ -584,6 +599,11 @@ func Description(text string) {
 // Usage prints the usage and exits
 func Usage() {
 	c.Usage()
+}
+
+// Alias gives another name for command. Ex. cortana.Alias("rmi", "rm -i")
+func Alias(name, definition string) {
+	c.Alias(name, definition)
 }
 
 // Args returns the arguments for current command
