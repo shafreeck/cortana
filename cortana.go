@@ -18,9 +18,13 @@ import (
 type Cortana struct {
 	ctx      context
 	commands commands
-	configs  []*config
-	envs     []EnvUnmarshaler
-	seq      int
+	flags    struct { // the custom flags
+		help longshort
+		cfg  longshort
+	}
+	configs []*config
+	envs    []EnvUnmarshaler
+	seq     int
 }
 
 // fatal exit the process with an error
@@ -29,9 +33,29 @@ func fatal(err error) {
 	os.Exit(-1)
 }
 
+type Option func(ls *longshort)
+
+func HelpFlag(long, short string) Option {
+	return func(ls *longshort) {
+		ls.long = long
+		ls.short = short
+	}
+}
+func DisableHelpFlag() Option {
+	return HelpFlag("", "")
+}
+
 // New a Cortana commander
-func New() *Cortana {
-	return &Cortana{commands: commands{t: btree.New(8)}}
+func New(opts ...Option) *Cortana {
+	c := &Cortana{commands: commands{t: btree.New(8)}}
+	c.flags.help = longshort{
+		long:  "--help",
+		short: "-h",
+	}
+	for _, opt := range opts {
+		opt(&c.flags.help)
+	}
+	return c
 }
 
 // AddCommand adds a command
@@ -45,9 +69,22 @@ func (c *Cortana) AddRootCommand(cmd func()) {
 	c.AddCommand("", cmd, "")
 }
 
+// ParsePath parse the configration file path from flags
+func ParsePath(long, short string) Option {
+	return func(ls *longshort) {
+		ls.long = long
+		ls.short = short
+	}
+}
+
 // AddConfig adds a config file
-func (c *Cortana) AddConfig(path string, unmarshaler Unmarshaler) {
-	c.configs = append(c.configs, &config{path: path, unmarshaler: unmarshaler})
+func (c *Cortana) AddConfig(path string, unmarshaler Unmarshaler, opts ...Option) {
+	cfg := &config{path: path, unmarshaler: unmarshaler}
+	for _, opt := range opts {
+		opt(&c.flags.cfg)
+	}
+
+	c.configs = append(c.configs, cfg)
 }
 
 func (c *Cortana) AddEnvUnmarshaler(unmarshaler EnvUnmarshaler) {
@@ -59,6 +96,7 @@ func (c *Cortana) Launch() {
 	cmd := c.searchCommand(os.Args[1:])
 	if cmd == nil {
 		c.Usage()
+		return
 	}
 	cmd.Proc()
 }
@@ -218,12 +256,25 @@ func (c *Cortana) Parse(v interface{}) {
 	if v == nil {
 		return
 	}
-	c.collectFlags(v)
-	c.applyDefaultValues(v)
-	c.unmarshalConfigs(v)
-	c.unmarshalEnvs(v)
-	c.unmarshalArgs(v)
-	c.checkRequires(v)
+	for func() (restart bool) {
+		defer func() {
+			if v := recover(); v != nil {
+				if s, ok := v.(string); ok && s == "restart" {
+					restart = true
+				} else {
+					panic(v)
+				}
+			}
+		}()
+		c.collectFlags(v)
+		c.applyDefaultValues(v)
+		c.unmarshalConfigs(v)
+		c.unmarshalEnvs(v)
+		c.unmarshalArgs(v)
+		c.checkRequires(v)
+		return false
+	}() {
+	}
 }
 
 // Title set the title for the command
@@ -515,8 +566,9 @@ func (c *Cortana) unmarshalArgs(v interface{}) {
 	args := c.ctx.args
 	for i := 0; i < len(args); i++ {
 		// print the usage and exit
-		if args[i] == "-h" || args[i] == "--help" {
+		if args[i] == c.flags.help.long || args[i] == c.flags.help.short {
 			c.Usage()
+			return
 		}
 		// handle nonflags
 		if !strings.HasPrefix(args[i], "-") && len(nonflags) > 0 {
@@ -529,11 +581,26 @@ func (c *Cortana) unmarshalArgs(v interface{}) {
 
 		var key, value string
 		if strings.Index(args[i], "=") > 0 {
-			kvs := strings.SplitN(args[i], "=", 1)
+			kvs := strings.SplitN(args[i], "=", 2)
 			key, value = kvs[0], kvs[1]
 		} else {
 			key = args[i]
 		}
+
+		// handle the config flags
+		if len(c.configs) > 0 &&
+			(key == c.flags.cfg.long || key == c.flags.cfg.short) {
+			cfg := c.configs[len(c.configs)-1] // overwrite the last one
+			if value != "" {
+				cfg.path = value
+				c.ctx.args = append(args[0:i], args[i+1:]...)
+			} else if i+1 < len(args) {
+				cfg.path = args[i+1]
+				c.ctx.args = append(args[0:i], args[i+2:]...)
+			}
+			panic("restart")
+		}
+
 		flag, ok := flags[key]
 		if ok {
 			if value != "" {
@@ -642,8 +709,8 @@ func AddRootCommand(cmd func()) {
 }
 
 // AddConfig adds a configuration file
-func AddConfig(path string, unmarshaler Unmarshaler) {
-	c.AddConfig(path, unmarshaler)
+func AddConfig(path string, unmarshaler Unmarshaler, opts ...Option) {
+	c.AddConfig(path, unmarshaler, opts...)
 }
 
 // Commands returns the list of the added commands

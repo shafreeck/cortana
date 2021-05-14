@@ -1,6 +1,7 @@
 package main
 
 import (
+	"encoding/json"
 	"fmt"
 
 	"github.com/shafreeck/cortana"
@@ -37,6 +38,7 @@ together to choose the person more effectively`)
 }
 
 func main() {
+	cortana.AddConfig("", cortana.UnmarshalFunc(json.Unmarshal), cortana.ParsePath("--config", "-c"))
 	cortana.AddCommand("say hello cortana", sayHelloCortana, "say hello to cortana")
 	cortana.AddCommand("say hello", sayHelloAnyone, "say hello to anyone")
 	cortana.AddCommand("say", sayAnything, "say anything to anyone")
