@@ -69,8 +69,8 @@ func (c *Cortana) AddRootCommand(cmd func()) {
 	c.AddCommand("", cmd, "")
 }
 
-// ParsePath parse the configration file path from flags
-func ParsePath(long, short string) Option {
+// ConfFlag parse the configration file path from flags
+func ConfFlag(long, short string) Option {
 	return func(ls *longshort) {
 		ls.long = long
 		ls.short = short
