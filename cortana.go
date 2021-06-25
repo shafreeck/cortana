@@ -69,8 +69,10 @@ func (c *Cortana) AddRootCommand(cmd func()) {
 	c.AddCommand("", cmd, "")
 }
 
+type AddConfigOption Option
+
 // ConfFlag parse the configration file path from flags
-func ConfFlag(long, short string) Option {
+func ConfFlag(long, short string) AddConfigOption {
 	return func(ls *longshort) {
 		ls.long = long
 		ls.short = short
@@ -78,7 +80,7 @@ func ConfFlag(long, short string) Option {
 }
 
 // AddConfig adds a config file
-func (c *Cortana) AddConfig(path string, unmarshaler Unmarshaler, opts ...Option) {
+func (c *Cortana) AddConfig(path string, unmarshaler Unmarshaler, opts ...AddConfigOption) {
 	cfg := &config{path: path, unmarshaler: unmarshaler}
 	for _, opt := range opts {
 		opt(&c.flags.cfg)
@@ -709,7 +711,7 @@ func AddRootCommand(cmd func()) {
 }
 
 // AddConfig adds a configuration file
-func AddConfig(path string, unmarshaler Unmarshaler, opts ...Option) {
+func AddConfig(path string, unmarshaler Unmarshaler, opts ...AddConfigOption) {
 	c.AddConfig(path, unmarshaler, opts...)
 }
 
