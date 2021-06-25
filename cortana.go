@@ -58,9 +58,28 @@ func New(opts ...Option) *Cortana {
 	return c
 }
 
+type AddCommandOption func(c *command)
+
+func Alias(name string) AddCommandOption {
+	return func(c *command) {
+		c.Alias = name
+	}
+}
+
 // AddCommand adds a command
-func (c *Cortana) AddCommand(path string, cmd func(), brief string) {
-	c.commands.t.ReplaceOrInsert(&command{Path: path, Proc: cmd, Brief: brief, order: c.seq})
+func (c *Cortana) AddCommand(path string, proc func(), brief string, opts ...AddCommandOption) {
+	cmd := &command{Path: path, Proc: proc, Brief: brief, order: c.seq}
+	for _, opt := range opts {
+		opt(cmd)
+	}
+	// add an internal alias command
+	if cmd.Alias != "" {
+		processAlias := func() {
+			c.alias(path)
+		}
+		c.commands.t.ReplaceOrInsert(&command{Path: cmd.Alias, Proc: processAlias, Brief: brief, internal: true})
+	}
+	c.commands.t.ReplaceOrInsert(cmd)
 	c.seq++
 }
 
@@ -313,20 +332,15 @@ func (c *Cortana) Usage() {
 		sort.Sort(orderedCommands(commands))
 
 		cmds := bytes.NewBuffer(nil)
-		alias := bytes.NewBuffer(nil)
 		for _, cmd := range commands {
-			writeString := cmds.WriteString
-			if cmd.Alias {
-				writeString = alias.WriteString
+			if cmd.internal {
+				continue
 			}
-			writeString(fmt.Sprintf("%-30s%s\n", cmd.Path, cmd.Brief))
-		}
-		fmt.Println(cmds.String())
-		fmt.Println()
-		if alias.Len() > 0 {
-			fmt.Println("Alias commands:")
-			fmt.Println()
-			fmt.Println(alias.String())
+			if cmd.Alias != "" {
+				cmds.WriteString(fmt.Sprintf("%-30s%s(%s)\n", cmd.Path, cmd.Brief, cmd.Alias))
+			} else {
+				cmds.WriteString(fmt.Sprintf("%-30s%s\n", cmd.Path, cmd.Brief))
+			}
 		}
 	}
 
@@ -336,14 +350,6 @@ func (c *Cortana) Usage() {
 	os.Exit(0)
 }
 
-func (c *Cortana) Alias(name, definition string) {
-	processAlias := func() {
-		c.alias(definition)
-	}
-	alias := fmt.Sprintf("alias %-5s = %-20s", name, definition)
-	c.commands.t.ReplaceOrInsert(&command{Path: name, Proc: processAlias, Brief: alias, order: c.seq, Alias: true})
-	c.seq++
-}
 func (c *Cortana) alias(definition string) {
 	args := strings.Fields(definition)
 	cmd := c.searchCommand(append(args, c.ctx.args...))
@@ -690,19 +696,14 @@ func Usage() {
 	c.Usage()
 }
 
-// Alias gives another name for command. Ex. cortana.Alias("rmi", "rm -i")
-func Alias(name, definition string) {
-	c.Alias(name, definition)
-}
-
 // Args returns the arguments for current command
 func Args() []string {
 	return c.Args()
 }
 
 // AddCommand adds a command
-func AddCommand(path string, cmd func(), brief string) {
-	c.AddCommand(path, cmd, brief)
+func AddCommand(path string, cmd func(), brief string, opts ...AddCommandOption) {
+	c.AddCommand(path, cmd, brief, opts...)
 }
 
 // AddRootCommand adds the command without sub path

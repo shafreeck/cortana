@@ -8,11 +8,12 @@ import (
 
 // Command is an executive unit
 type Command struct {
-	Path  string
-	Proc  func()
-	Brief string
-	Alias bool
-	order int // the order is the sequence of invoking add command
+	Path     string
+	Proc     func()
+	Brief    string
+	Alias    string
+	order    int // the order is the sequence of invoking add command
+	internal bool
 }
 
 type command Command
