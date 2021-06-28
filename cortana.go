@@ -39,6 +39,7 @@ func HelpFlag(long, short string) Option {
 	return func(ls *longshort) {
 		ls.long = long
 		ls.short = short
+		ls.desc = "help for the command"
 	}
 }
 func DisableHelpFlag() Option {
@@ -51,6 +52,7 @@ func New(opts ...Option) *Cortana {
 	c.flags.help = longshort{
 		long:  "--help",
 		short: "-h",
+		desc:  "help for the command",
 	}
 	for _, opt := range opts {
 		opt(&c.flags.help)
@@ -76,6 +78,7 @@ func ConfFlag(long, short string) AddConfigOption {
 	return func(ls *longshort) {
 		ls.long = long
 		ls.short = short
+		ls.desc = "path of the configuration file"
 	}
 }
 
@@ -371,6 +374,24 @@ func (c *Cortana) collectFlags(v interface{}) {
 	}
 	w.WriteString("\n\n")
 
+	if c.flags.help.short != "" || c.flags.help.long != "" {
+		flags = append(flags, &flag{
+			long:        c.flags.help.long,
+			short:       c.flags.help.short,
+			description: c.flags.help.desc,
+			required:    true,
+			rv:          reflect.ValueOf(false),
+		})
+	}
+	if c.flags.cfg.short != "" || c.flags.cfg.long != "" {
+		flags = append(flags, &flag{
+			long:        c.flags.cfg.long,
+			short:       c.flags.cfg.short,
+			description: c.flags.cfg.desc,
+			required:    true,
+			rv:          reflect.ValueOf(false),
+		})
+	}
 	for _, f := range flags {
 		var flag string
 		if f.short != "-" {
