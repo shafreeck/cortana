@@ -384,12 +384,17 @@ func (c *Cortana) collectFlags(v interface{}) {
 		})
 	}
 	if c.flags.cfg.short != "" || c.flags.cfg.long != "" {
+		conf := c.configs[len(c.configs)-1]
+		required := false
+		if conf.path == "" {
+			required = true
+		}
 		flags = append(flags, &flag{
-			long:        c.flags.cfg.long,
-			short:       c.flags.cfg.short,
-			description: c.flags.cfg.desc,
-			required:    true,
-			rv:          reflect.ValueOf(false),
+			long:         c.flags.cfg.long,
+			short:        c.flags.cfg.short,
+			description:  c.flags.cfg.desc,
+			required:     required,
+			defaultValue: conf.path,
 		})
 	}
 	for _, f := range flags {
@@ -617,11 +622,13 @@ func (c *Cortana) unmarshalArgs(v interface{}) {
 			if value != "" {
 				cfg.path = value
 				c.ctx.args = append(args[0:i], args[i+1:]...)
+				panic("restart")
 			} else if i+1 < len(args) {
 				cfg.path = args[i+1]
 				c.ctx.args = append(args[0:i], args[i+2:]...)
+				panic("restart")
 			}
-			panic("restart")
+			fatal(errors.New(key + " requires an argument"))
 		}
 
 		flag, ok := flags[key]
