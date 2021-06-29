@@ -48,7 +48,7 @@ func DisableHelpFlag() Option {
 
 // New a Cortana commander
 func New(opts ...Option) *Cortana {
-	c := &Cortana{commands: commands{t: btree.New(8)}}
+	c := &Cortana{commands: commands{t: btree.New(8)}, ctx: context{args: os.Args[1:], name: os.Args[0]}}
 	c.flags.help = longshort{
 		long:  "--help",
 		short: "-h",
