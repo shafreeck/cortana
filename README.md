@@ -1,6 +1,12 @@
 # Cortana
 An extremely easy to use command line parsing library 
 
+# Features
+
+* Extremely easy to use
+* Handling the sub commands exactly the same as the main command
+* Parse args from configration file, envrionment and flags
+
 ## How to use
 
 ### Work in the main function
