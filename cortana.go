@@ -14,17 +14,19 @@ import (
 	"github.com/google/btree"
 )
 
+type predefined struct {
+	help longshort
+	cfg  longshort
+}
+
 // Cortana is the commander
 type Cortana struct {
 	ctx      context
 	commands commands
-	flags    struct { // the custom flags
-		help longshort
-		cfg  longshort
-	}
-	configs []*config
-	envs    []EnvUnmarshaler
-	seq     int
+	flags    predefined
+	configs  []*config
+	envs     []EnvUnmarshaler
+	seq      int
 }
 
 // fatal exit the process with an error
@@ -33,17 +35,26 @@ func fatal(err error) {
 	os.Exit(-1)
 }
 
-type Option func(ls *longshort)
+type Option func(flags *predefined)
 
 func HelpFlag(long, short string) Option {
-	return func(ls *longshort) {
-		ls.long = long
-		ls.short = short
-		ls.desc = "help for the command"
+	return func(flags *predefined) {
+		flags.help.long = long
+		flags.help.short = short
+		flags.help.desc = "help for the command"
 	}
 }
 func DisableHelpFlag() Option {
 	return HelpFlag("", "")
+}
+
+// ConfFlag parse the configration file path from flags
+func ConfFlag(long, short string) Option {
+	return func(flags *predefined) {
+		flags.cfg.long = long
+		flags.cfg.short = short
+		flags.cfg.desc = "path of the configuration file"
+	}
 }
 
 // New a Cortana commander
@@ -55,7 +66,7 @@ func New(opts ...Option) *Cortana {
 		desc:  "help for the command",
 	}
 	for _, opt := range opts {
-		opt(&c.flags.help)
+		opt(&c.flags)
 	}
 	return c
 }
@@ -71,24 +82,9 @@ func (c *Cortana) AddRootCommand(cmd func()) {
 	c.AddCommand("", cmd, "")
 }
 
-type AddConfigOption Option
-
-// ConfFlag parse the configration file path from flags
-func ConfFlag(long, short string) AddConfigOption {
-	return func(ls *longshort) {
-		ls.long = long
-		ls.short = short
-		ls.desc = "path of the configuration file"
-	}
-}
-
 // AddConfig adds a config file
-func (c *Cortana) AddConfig(path string, unmarshaler Unmarshaler, opts ...AddConfigOption) {
+func (c *Cortana) AddConfig(path string, unmarshaler Unmarshaler) {
 	cfg := &config{path: path, unmarshaler: unmarshaler}
-	for _, opt := range opts {
-		opt(&c.flags.cfg)
-	}
-
 	c.configs = append(c.configs, cfg)
 }
 
@@ -739,8 +735,8 @@ func AddRootCommand(cmd func()) {
 }
 
 // AddConfig adds a configuration file
-func AddConfig(path string, unmarshaler Unmarshaler, opts ...AddConfigOption) {
-	c.AddConfig(path, unmarshaler, opts...)
+func AddConfig(path string, unmarshaler Unmarshaler) {
+	c.AddConfig(path, unmarshaler)
 }
 
 // Commands returns the list of the added commands
