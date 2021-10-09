@@ -71,6 +71,13 @@ func New(opts ...Option) *Cortana {
 	return c
 }
 
+// Use the cortana options
+func (c *Cortana) Use(opts ...Option) {
+	for _, opt := range opts {
+		opt(&c.flags)
+	}
+}
+
 // AddCommand adds a command
 func (c *Cortana) AddCommand(path string, cmd func(), brief string) {
 	c.commands.t.ReplaceOrInsert(&command{Path: path, Proc: cmd, Brief: brief, order: c.seq})
@@ -747,4 +754,9 @@ func Commands() []*Command {
 // Launch finds and executes the command
 func Launch() {
 	c.Launch()
+}
+
+// Use the cortana options
+func Use(opts ...Option) {
+	c.Use(opts...)
 }
