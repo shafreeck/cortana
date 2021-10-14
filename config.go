@@ -7,6 +7,7 @@ type longshort struct {
 }
 
 type config struct {
-	path        string
-	unmarshaler Unmarshaler
+	path         string
+	unmarshaler  Unmarshaler
+	requireExist bool
 }

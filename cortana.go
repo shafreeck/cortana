@@ -16,7 +16,10 @@ import (
 
 type predefined struct {
 	help longshort
-	cfg  longshort
+	cfg  struct {
+		longshort
+		unmarshaler Unmarshaler
+	}
 }
 
 // Cortana is the commander
@@ -49,11 +52,12 @@ func DisableHelpFlag() Option {
 }
 
 // ConfFlag parse the configration file path from flags
-func ConfFlag(long, short string) Option {
+func ConfFlag(long, short string, unmarshaler Unmarshaler) Option {
 	return func(flags *predefined) {
 		flags.cfg.long = long
 		flags.cfg.short = short
 		flags.cfg.desc = "path of the configuration file"
+		flags.cfg.unmarshaler = unmarshaler
 	}
 }
 
@@ -387,17 +391,24 @@ func (c *Cortana) collectFlags(v interface{}) {
 		})
 	}
 	if c.flags.cfg.short != "" || c.flags.cfg.long != "" {
-		conf := c.configs[len(c.configs)-1]
-		required := false
-		if conf.path == "" {
-			required = true
+		path := ""
+		for i, cfg := range c.configs {
+			if i == len(c.configs)-1 {
+				path += cfg.path
+			} else {
+				path += cfg.path + ","
+			}
 		}
 		flags = append(flags, &flag{
 			long:         c.flags.cfg.long,
 			short:        c.flags.cfg.short,
 			description:  c.flags.cfg.desc,
-			required:     required,
-			defaultValue: conf.path,
+			required:     true,
+			defaultValue: path,
+		})
+		c.configs = append(c.configs, &config{
+			path:        "", // this should be determined by parsing the args
+			unmarshaler: c.flags.cfg.unmarshaler,
 		})
 	}
 	for _, f := range flags {
@@ -619,17 +630,20 @@ func (c *Cortana) unmarshalArgs(v interface{}) {
 		}
 
 		// handle the config flags
-		if len(c.configs) > 0 &&
-			(key == c.flags.cfg.long || key == c.flags.cfg.short) {
+		if key == c.flags.cfg.long || key == c.flags.cfg.short {
 			cfg := c.configs[len(c.configs)-1] // overwrite the last one
+			cfg.requireExist = true
 			if value != "" {
 				cfg.path = value
 				c.ctx.args = append(args[0:i], args[i+1:]...)
 				panic("restart")
 			} else if i+1 < len(args) {
-				cfg.path = args[i+1]
-				c.ctx.args = append(args[0:i], args[i+2:]...)
-				panic("restart")
+				next := args[i+1]
+				if next[0] != '-' {
+					cfg.path = args[i+1]
+					c.ctx.args = append(args[0:i], args[i+2:]...)
+					panic("restart")
+				}
 			}
 			fatal(errors.New(key + " requires an argument"))
 		}
@@ -655,8 +669,8 @@ func (c *Cortana) unmarshalArgs(v interface{}) {
 						fatal(err)
 					}
 					i++
+					continue
 				}
-				continue
 			}
 			fatal(errors.New(key + " requires an argument"))
 		} else {
@@ -669,7 +683,7 @@ func (c *Cortana) unmarshalConfigs(v interface{}) {
 	for _, cfg := range c.configs {
 		file, err := os.Open(cfg.path)
 		if err != nil {
-			if os.IsNotExist(err) {
+			if os.IsNotExist(err) && !cfg.requireExist {
 				continue
 			}
 			fatal(err)
