@@ -386,7 +386,6 @@ func (c *Cortana) collectFlags(v interface{}) {
 			long:        c.flags.help.long,
 			short:       c.flags.help.short,
 			description: c.flags.help.desc,
-			required:    true,
 			rv:          reflect.ValueOf(false),
 		})
 	}
