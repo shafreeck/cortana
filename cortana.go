@@ -522,6 +522,9 @@ func (c *Cortana) applyDefaultValues(v interface{}) {
 	}
 }
 func applyValue(v reflect.Value, s string) error {
+	if s == "" {
+		return nil
+	}
 	switch v.Kind() {
 	case reflect.String:
 		v.SetString(s)
