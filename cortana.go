@@ -374,10 +374,17 @@ func (c *Cortana) collectFlags(v interface{}) {
 		w.WriteString(" [options]")
 	}
 	for _, nf := range nonflags {
+		name := nf.long
+		if name == "" {
+			name = nf.name
+		}
+		if nf.rv.Kind() == reflect.Slice {
+			name += "..."
+		}
 		if nf.required {
-			w.WriteString(" <" + nf.long + ">")
+			w.WriteString(" <" + name + ">")
 		} else {
-			w.WriteString(" [" + nf.long + "]")
+			w.WriteString(" [" + name + "]")
 		}
 	}
 	w.WriteString("\n\n")
@@ -434,7 +441,7 @@ func (c *Cortana) collectFlags(v interface{}) {
 			// align with 32 spaces
 			flag += "\n                                "
 		}
-		if !f.required {
+		if !f.required && f.rv.Kind() != reflect.Bool {
 			s := fmt.Sprintf("  %-30s %s. (default=%s)\n", flag, f.description, f.defaultValue)
 			w.WriteString(s)
 		} else {
