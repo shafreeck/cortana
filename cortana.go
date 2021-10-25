@@ -27,6 +27,7 @@ type Cortana struct {
 	ctx      context
 	commands commands
 	flags    predefined
+	vars     []*flag
 	configs  []*config
 	envs     []EnvUnmarshaler
 	seq      int
@@ -613,10 +614,13 @@ func (c *Cortana) unmarshalArgs(v interface{}) {
 		}
 		// handle nonflags
 		if !strings.HasPrefix(args[i], "-") && len(nonflags) > 0 {
-			if err := applyValue(nonflags[0].rv, args[i]); err != nil {
+			rv := nonflags[0].rv
+			if err := applyValue(rv, args[i]); err != nil {
 				fatal(err)
 			}
-			nonflags = nonflags[1:]
+			if rv.Kind() != reflect.Slice {
+				nonflags = nonflags[1:]
+			}
 			continue
 		}
 
