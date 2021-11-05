@@ -634,10 +634,15 @@ func (c *Cortana) unmarshalArgs(v interface{}) {
 			continue
 		}
 
+		var emptyValue bool
 		var key, value string
 		if strings.Index(args[i], "=") > 0 {
 			kvs := strings.SplitN(args[i], "=", 2)
 			key, value = kvs[0], kvs[1]
+			// In case of --flag=, user set the flag as an empty value explicitly, the empty value should be allowd
+			if value == "" {
+				emptyValue = true
+			}
 		} else {
 			key = args[i]
 		}
@@ -663,6 +668,9 @@ func (c *Cortana) unmarshalArgs(v interface{}) {
 
 		flag, ok := flags[key]
 		if ok {
+			if emptyValue {
+				continue
+			}
 			if value != "" {
 				if err := applyValue(flag.rv, value); err != nil {
 					fatal(err)
