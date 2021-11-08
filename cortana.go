@@ -89,6 +89,27 @@ func (c *Cortana) Use(opts ...Option) {
 	}
 }
 
+func (c *Cortana) Flag(v interface{}, long, short, defaultValue, description string) {
+	rv := reflect.ValueOf(v)
+	if rv.Kind() != reflect.Ptr {
+		panic("flag v must be a pointer")
+	}
+	required := false
+	if defaultValue == "-" {
+		required = true
+	}
+
+	c.parsing.flags = append(c.parsing.flags, &flag{
+		name:         long,
+		long:         long,
+		short:        short,
+		required:     required,
+		defaultValue: defaultValue,
+		description:  description,
+		rv:           rv.Elem(),
+	})
+}
+
 // Command adds a command
 func (c *Cortana) Command(path string, brief string, cmd func()) {
 	c.commands.t.ReplaceOrInsert(&command{Path: path, Proc: cmd, Brief: brief, order: c.seq})
@@ -283,9 +304,6 @@ func IgnoreUnknownArgs() ParseOption {
 
 // Parse the flags
 func (c *Cortana) Parse(v interface{}, opts ...ParseOption) {
-	if v == nil {
-		return
-	}
 	opt := parseOption{}
 	for _, o := range opts {
 		o(&opt)
@@ -308,8 +326,10 @@ func (c *Cortana) Parse(v interface{}, opts ...ParseOption) {
 				}
 			}
 		}()
-		c.unmarshalConfigs(v)
-		c.unmarshalEnvs(v)
+		if v != nil {
+			c.unmarshalConfigs(v)
+			c.unmarshalEnvs(v)
+		}
 		c.unmarshalArgs(opt.ignoreUnknownArgs)
 		c.checkRequires()
 		return false
@@ -790,6 +810,11 @@ func Alias(name, definition string) {
 // Args returns the arguments for current command
 func Args() []string {
 	return c.Args()
+}
+
+// Flag adds a flag
+func Flag(v interface{}, long, short, defaultValue, description string) {
+	c.Flag(v, long, short, defaultValue, description)
 }
 
 // Command adds a command

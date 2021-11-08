@@ -25,14 +25,16 @@ selected by using the name, age or location. You can even combine these conditio
 together to choose the person more effectively`)
 	greeting := struct { //format: --long -short defaultValue description
 		Name     string `lsdd:"--name, -n, cortana, say something to cortana"`
-		Age      int    `cortana:"--age, -, 18, say something to someone with certain age"`
 		Location string `cortana:"--location, -l, beijing, say something to someone lives in certain location"`
 		Text     string `cortana:"text, -, -"`
 	}{}
+
+	var age int
+	cortana.Flag(&age, "--age", "-", "18", "say something to someone with certain age")
 	cortana.Parse(&greeting)
 
 	fmt.Printf("Say to %s who is %d year old and lives in %s now:\n",
-		greeting.Name, greeting.Age, greeting.Location)
+		greeting.Name, age, greeting.Location)
 	fmt.Println(greeting.Text)
 
 }
