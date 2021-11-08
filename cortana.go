@@ -30,6 +30,11 @@ type Cortana struct {
 	configs    []*config
 	envs       []EnvUnmarshaler
 
+	parsing struct {
+		flags    []*flag
+		nonflags []*nonflag
+	}
+
 	// seq keeps the order of adding a command
 	seq int
 }
@@ -285,6 +290,14 @@ func (c *Cortana) Parse(v interface{}, opts ...ParseOption) {
 	for _, o := range opts {
 		o(&opt)
 	}
+
+	// process the defined args
+	flags, nonflags := parseCortanaTags(reflect.ValueOf(v))
+	c.parsing.flags = append(c.parsing.flags, flags...)
+	c.parsing.nonflags = append(c.parsing.nonflags, nonflags...)
+	c.collectFlags()
+	c.applyDefaultValues()
+
 	for func() (restart bool) {
 		defer func() {
 			if v := recover(); v != nil {
@@ -295,12 +308,10 @@ func (c *Cortana) Parse(v interface{}, opts ...ParseOption) {
 				}
 			}
 		}()
-		c.collectFlags(v)
-		c.applyDefaultValues(v)
 		c.unmarshalConfigs(v)
 		c.unmarshalEnvs(v)
-		c.unmarshalArgs(v, opt.ignoreUnknownArgs)
-		c.checkRequires(v)
+		c.unmarshalArgs(opt.ignoreUnknownArgs)
+		c.checkRequires()
 		return false
 	}() {
 	}
@@ -381,8 +392,8 @@ func (c *Cortana) alias(definition string) {
 	cmd.Proc()
 }
 
-func (c *Cortana) collectFlags(v interface{}) {
-	flags, nonflags := parseCortanaTags(reflect.ValueOf(v))
+func (c *Cortana) collectFlags() {
+	flags, nonflags := c.parsing.flags, c.parsing.nonflags
 
 	w := bytes.NewBuffer(nil)
 	w.WriteString(c.ctx.name)
@@ -503,8 +514,8 @@ func parseCortanaTags(rv reflect.Value) ([]*flag, []*nonflag) {
 	}
 	return flags, nonflags
 }
-func buildArgsIndex(flagsIdx map[string]*flag, rv reflect.Value) []*nonflag {
-	flags, nonflags := parseCortanaTags(rv)
+func buildArgsIndex(flags []*flag) map[string]*flag {
+	flagsIdx := make(map[string]*flag)
 	for _, f := range flags {
 		if f.long != "" {
 			flagsIdx[f.long] = f
@@ -513,11 +524,10 @@ func buildArgsIndex(flagsIdx map[string]*flag, rv reflect.Value) []*nonflag {
 			flagsIdx[f.short] = f
 		}
 	}
-	return nonflags
+	return flagsIdx
 }
-func (c *Cortana) applyDefaultValues(v interface{}) {
-	flags, nonflags := parseCortanaTags(reflect.ValueOf(v))
-	for _, nf := range nonflags {
+func (c *Cortana) applyDefaultValues() {
+	for _, nf := range c.parsing.nonflags {
 		if nf.required {
 			continue
 		}
@@ -525,7 +535,7 @@ func (c *Cortana) applyDefaultValues(v interface{}) {
 			fatal(err)
 		}
 	}
-	for _, f := range flags {
+	for _, f := range c.parsing.flags {
 		if f.required {
 			continue
 		}
@@ -577,8 +587,8 @@ func applyValue(v reflect.Value, s string) error {
 	}
 	return nil
 }
-func (c *Cortana) checkRequires(v interface{}) {
-	flags, nonflags := parseCortanaTags(reflect.ValueOf(v))
+func (c *Cortana) checkRequires() {
+	flags, nonflags := c.parsing.flags, c.parsing.nonflags
 
 	args := c.ctx.args
 	// check the nonflags
@@ -627,9 +637,9 @@ func (c *Cortana) checkRequires(v interface{}) {
 }
 
 // unmarshalArgs fills v with the parsed args
-func (c *Cortana) unmarshalArgs(v interface{}, ignoreUnknown bool) {
-	flags := make(map[string]*flag)
-	nonflags := buildArgsIndex(flags, reflect.ValueOf(v))
+func (c *Cortana) unmarshalArgs(ignoreUnknown bool) {
+	flags := buildArgsIndex(c.parsing.flags)
+	nonflags := c.parsing.nonflags
 
 	args := c.ctx.args
 	for i := 0; i < len(args); i++ {
