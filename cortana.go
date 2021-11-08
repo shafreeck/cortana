@@ -27,7 +27,6 @@ type Cortana struct {
 	ctx      context
 	commands commands
 	flags    predefined
-	vars     []*flag
 	configs  []*config
 	envs     []EnvUnmarshaler
 	seq      int
@@ -264,10 +263,25 @@ func (c *Cortana) Commands() []*Command {
 	return commands
 }
 
+type parseOption struct {
+	ignoreUnknownArgs bool
+}
+type ParseOption func(opt *parseOption)
+
+func IgnoreUnknownArgs() ParseOption {
+	return func(opt *parseOption) {
+		opt.ignoreUnknownArgs = true
+	}
+}
+
 // Parse the flags
-func (c *Cortana) Parse(v interface{}) {
+func (c *Cortana) Parse(v interface{}, opts ...ParseOption) {
 	if v == nil {
 		return
+	}
+	opt := parseOption{}
+	for _, o := range opts {
+		o(&opt)
 	}
 	for func() (restart bool) {
 		defer func() {
@@ -283,7 +297,7 @@ func (c *Cortana) Parse(v interface{}) {
 		c.applyDefaultValues(v)
 		c.unmarshalConfigs(v)
 		c.unmarshalEnvs(v)
-		c.unmarshalArgs(v)
+		c.unmarshalArgs(v, opt.ignoreUnknownArgs)
 		c.checkRequires(v)
 		return false
 	}() {
@@ -611,7 +625,7 @@ func (c *Cortana) checkRequires(v interface{}) {
 }
 
 // unmarshalArgs fills v with the parsed args
-func (c *Cortana) unmarshalArgs(v interface{}) {
+func (c *Cortana) unmarshalArgs(v interface{}, ignoreUnknown bool) {
 	flags := make(map[string]*flag)
 	nonflags := buildArgsIndex(flags, reflect.ValueOf(v))
 
@@ -694,7 +708,7 @@ func (c *Cortana) unmarshalArgs(v interface{}) {
 				}
 			}
 			fatal(errors.New(key + " requires an argument"))
-		} else {
+		} else if !ignoreUnknown {
 			fatal(errors.New("unknown argument: " + args[i]))
 		}
 	}
@@ -736,8 +750,8 @@ func init() {
 }
 
 // Parse the arguemnts into a struct
-func Parse(v interface{}) {
-	c.Parse(v)
+func Parse(v interface{}, opts ...ParseOption) {
+	c.Parse(v, opts...)
 }
 
 // Title set the title for the command
