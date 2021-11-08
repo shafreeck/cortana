@@ -7,7 +7,7 @@ import (
 )
 
 // Command is an executive unit
-type Command struct {
+type CommandDesc struct {
 	Path  string
 	Proc  func()
 	Brief string
@@ -15,7 +15,7 @@ type Command struct {
 	order int // the order is the sequence of invoking add command
 }
 
-type command Command
+type command CommandDesc
 
 func (c *command) Less(than btree.Item) bool {
 	t := than.(*command)

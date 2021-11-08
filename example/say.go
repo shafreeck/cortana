@@ -38,13 +38,13 @@ together to choose the person more effectively`)
 }
 
 func main() {
-	cortana.AddCommand("say hello cortana", sayHelloCortana, "say hello to cortana")
-	cortana.AddCommand("say hello", sayHelloAnyone, "say hello to anyone")
-	cortana.AddCommand("say", sayAnything, "say anything to anyone")
+	cortana.Command("say hello cortana", "say hello to cortana", sayHelloCortana)
+	cortana.Command("say hello", "say hello to anyone", sayHelloAnyone)
+	cortana.Command("say", "say anything to anyone", sayAnything)
 
 	cortana.Alias("cortana", "say hello cortana")
 
-	cortana.AddConfig("greeting.json", cortana.UnmarshalFunc(json.Unmarshal))
+	cortana.Config("greeting.json", cortana.UnmarshalFunc(json.Unmarshal))
 	cortana.Use(cortana.ConfFlag("--config", "-c", cortana.UnmarshalFunc(json.Unmarshal)))
 
 	cortana.Launch()

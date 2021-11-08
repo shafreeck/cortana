@@ -89,24 +89,24 @@ func (c *Cortana) Use(opts ...Option) {
 	}
 }
 
-// AddCommand adds a command
-func (c *Cortana) AddCommand(path string, cmd func(), brief string) {
+// Command adds a command
+func (c *Cortana) Command(path string, brief string, cmd func()) {
 	c.commands.t.ReplaceOrInsert(&command{Path: path, Proc: cmd, Brief: brief, order: c.seq})
 	c.seq++
 }
 
-// AddRootCommand adds the command without sub path
-func (c *Cortana) AddRootCommand(cmd func()) {
-	c.AddCommand("", cmd, "")
+// RootCommand adds the command without sub path
+func (c *Cortana) RootCommand(cmd func()) {
+	c.Command("", "", cmd)
 }
 
-// AddConfig adds a config file
-func (c *Cortana) AddConfig(path string, unmarshaler Unmarshaler) {
+// Config adds a config file
+func (c *Cortana) Config(path string, unmarshaler Unmarshaler) {
 	cfg := &config{path: path, unmarshaler: unmarshaler}
 	c.configs = append(c.configs, cfg)
 }
 
-func (c *Cortana) AddEnvUnmarshaler(unmarshaler EnvUnmarshaler) {
+func (c *Cortana) EnvUnmarshaler(unmarshaler EnvUnmarshaler) {
 	c.envs = append(c.envs, unmarshaler)
 }
 
@@ -120,7 +120,7 @@ func (c *Cortana) Launch() {
 	cmd.Proc()
 }
 
-func (c *Cortana) searchCommand(args []string) *Command {
+func (c *Cortana) searchCommand(args []string) *command {
 	var cmdArgs []string
 	var maybeArgs []string
 	var path string
@@ -250,7 +250,7 @@ func (c *Cortana) searchCommand(args []string) *Command {
 		args:    cmdArgs,
 		longest: path,
 	}
-	return (*Command)(cmd)
+	return (*command)(cmd)
 }
 
 // Args returns the args in current context
@@ -259,13 +259,13 @@ func (c *Cortana) Args() []string {
 }
 
 // Commands returns all the available commands
-func (c *Cortana) Commands() []*Command {
-	var commands []*Command
+func (c *Cortana) Commands() []*CommandDesc {
+	var commands []*CommandDesc
 
 	// scan all the commands
 	cmds := c.commands.scan("")
 	for _, c := range cmds {
-		commands = append(commands, (*Command)(c))
+		commands = append(commands, (*CommandDesc)(c))
 	}
 	return commands
 }
@@ -792,23 +792,23 @@ func Args() []string {
 	return c.Args()
 }
 
-// AddCommand adds a command
-func AddCommand(path string, cmd func(), brief string) {
-	c.AddCommand(path, cmd, brief)
+// Command adds a command
+func Command(path string, brief string, cmd func()) {
+	c.Command(path, brief, cmd)
 }
 
-// AddRootCommand adds the command without sub path
-func AddRootCommand(cmd func()) {
-	c.AddRootCommand(cmd)
+// RootCommand adds the command without sub path
+func RootCommand(cmd func()) {
+	c.RootCommand(cmd)
 }
 
-// AddConfig adds a configuration file
-func AddConfig(path string, unmarshaler Unmarshaler) {
-	c.AddConfig(path, unmarshaler)
+// Config adds a configuration file
+func Config(path string, unmarshaler Unmarshaler) {
+	c.Config(path, unmarshaler)
 }
 
 // Commands returns the list of the added commands
-func Commands() []*Command {
+func Commands() []*CommandDesc {
 	return c.Commands()
 }
 
