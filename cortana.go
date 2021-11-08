@@ -24,12 +24,14 @@ type predefined struct {
 
 // Cortana is the commander
 type Cortana struct {
-	ctx      context
-	commands commands
-	flags    predefined
-	configs  []*config
-	envs     []EnvUnmarshaler
-	seq      int
+	ctx        context
+	commands   commands
+	predefined predefined
+	configs    []*config
+	envs       []EnvUnmarshaler
+
+	// seq keeps the order of adding a command
+	seq int
 }
 
 // fatal exit the process with an error
@@ -41,10 +43,10 @@ func fatal(err error) {
 type Option func(flags *predefined)
 
 func HelpFlag(long, short string) Option {
-	return func(flags *predefined) {
-		flags.help.long = long
-		flags.help.short = short
-		flags.help.desc = "help for the command"
+	return func(p *predefined) {
+		p.help.long = long
+		p.help.short = short
+		p.help.desc = "help for the command"
 	}
 }
 func DisableHelpFlag() Option {
@@ -53,24 +55,24 @@ func DisableHelpFlag() Option {
 
 // ConfFlag parse the configration file path from flags
 func ConfFlag(long, short string, unmarshaler Unmarshaler) Option {
-	return func(flags *predefined) {
-		flags.cfg.long = long
-		flags.cfg.short = short
-		flags.cfg.desc = "path of the configuration file"
-		flags.cfg.unmarshaler = unmarshaler
+	return func(p *predefined) {
+		p.cfg.long = long
+		p.cfg.short = short
+		p.cfg.desc = "path of the configuration file"
+		p.cfg.unmarshaler = unmarshaler
 	}
 }
 
 // New a Cortana commander
 func New(opts ...Option) *Cortana {
 	c := &Cortana{commands: commands{t: btree.New(8)}, ctx: context{args: os.Args[1:], name: os.Args[0]}}
-	c.flags.help = longshort{
+	c.predefined.help = longshort{
 		long:  "--help",
 		short: "-h",
 		desc:  "help for the command",
 	}
 	for _, opt := range opts {
-		opt(&c.flags)
+		opt(&c.predefined)
 	}
 	return c
 }
@@ -78,7 +80,7 @@ func New(opts ...Option) *Cortana {
 // Use the cortana options
 func (c *Cortana) Use(opts ...Option) {
 	for _, opt := range opts {
-		opt(&c.flags)
+		opt(&c.predefined)
 	}
 }
 
@@ -403,15 +405,15 @@ func (c *Cortana) collectFlags(v interface{}) {
 	}
 	w.WriteString("\n\n")
 
-	if c.flags.help.short != "" || c.flags.help.long != "" {
+	if c.predefined.help.short != "" || c.predefined.help.long != "" {
 		flags = append(flags, &flag{
-			long:        c.flags.help.long,
-			short:       c.flags.help.short,
-			description: c.flags.help.desc,
+			long:        c.predefined.help.long,
+			short:       c.predefined.help.short,
+			description: c.predefined.help.desc,
 			rv:          reflect.ValueOf(false),
 		})
 	}
-	if c.flags.cfg.short != "" || c.flags.cfg.long != "" {
+	if c.predefined.cfg.short != "" || c.predefined.cfg.long != "" {
 		path := ""
 		for i, cfg := range c.configs {
 			if i == len(c.configs)-1 {
@@ -421,15 +423,15 @@ func (c *Cortana) collectFlags(v interface{}) {
 			}
 		}
 		flags = append(flags, &flag{
-			long:         c.flags.cfg.long,
-			short:        c.flags.cfg.short,
-			description:  c.flags.cfg.desc,
+			long:         c.predefined.cfg.long,
+			short:        c.predefined.cfg.short,
+			description:  c.predefined.cfg.desc,
 			required:     true,
 			defaultValue: path,
 		})
 		c.configs = append(c.configs, &config{
 			path:        "", // this should be determined by parsing the args
-			unmarshaler: c.flags.cfg.unmarshaler,
+			unmarshaler: c.predefined.cfg.unmarshaler,
 		})
 	}
 	for _, f := range flags {
@@ -632,7 +634,7 @@ func (c *Cortana) unmarshalArgs(v interface{}, ignoreUnknown bool) {
 	args := c.ctx.args
 	for i := 0; i < len(args); i++ {
 		// print the usage and exit
-		if args[i] == c.flags.help.long || args[i] == c.flags.help.short {
+		if args[i] == c.predefined.help.long || args[i] == c.predefined.help.short {
 			c.Usage()
 			return
 		}
@@ -662,7 +664,7 @@ func (c *Cortana) unmarshalArgs(v interface{}, ignoreUnknown bool) {
 		}
 
 		// handle the config flags
-		if key == c.flags.cfg.long || key == c.flags.cfg.short {
+		if key == c.predefined.cfg.long || key == c.predefined.cfg.short {
 			cfg := c.configs[len(c.configs)-1] // overwrite the last one
 			cfg.requireExist = true
 			if value != "" {
