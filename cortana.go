@@ -10,6 +10,7 @@ import (
 	"sort"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/google/btree"
 )
@@ -272,12 +273,18 @@ func (c *Cortana) Commands() []*Command {
 
 type parseOption struct {
 	ignoreUnknownArgs bool
+	args              []string
 }
 type ParseOption func(opt *parseOption)
 
 func IgnoreUnknownArgs() ParseOption {
 	return func(opt *parseOption) {
 		opt.ignoreUnknownArgs = true
+	}
+}
+func WithArgs(args []string) ParseOption {
+	return func(opt *parseOption) {
+		opt.args = args
 	}
 }
 
@@ -289,6 +296,9 @@ func (c *Cortana) Parse(v interface{}, opts ...ParseOption) {
 	opt := parseOption{}
 	for _, o := range opts {
 		o(&opt)
+	}
+	if opt.args != nil {
+		c.ctx.args = opt.args
 	}
 
 	// process the defined args
@@ -555,7 +565,15 @@ func applyValue(v reflect.Value, s string) error {
 	case reflect.String:
 		v.SetString(s)
 	case reflect.Int, reflect.Int16, reflect.Int32, reflect.Int64:
-		i, err := strconv.ParseInt(s, 10, 64)
+		var i int64
+		var d time.Duration
+		var err error
+		if v.Type() == reflect.TypeOf(time.Duration(0)) {
+			d, err = time.ParseDuration(s)
+			i = int64(d)
+		} else {
+			i, err = strconv.ParseInt(s, 10, 64)
+		}
 		if err != nil {
 			return err
 		}
@@ -641,6 +659,7 @@ func (c *Cortana) unmarshalArgs(ignoreUnknown bool) {
 	flags := buildArgsIndex(c.parsing.flags)
 	nonflags := c.parsing.nonflags
 
+	var unknown []string
 	args := c.ctx.args
 	for i := 0; i < len(args); i++ {
 		// print the usage and exit
@@ -720,10 +739,15 @@ func (c *Cortana) unmarshalArgs(ignoreUnknown bool) {
 				}
 			}
 			fatal(errors.New(key + " requires an argument"))
-		} else if !ignoreUnknown {
-			fatal(errors.New("unknown argument: " + args[i]))
+		} else {
+			if ignoreUnknown {
+				unknown = append(unknown, args[i])
+			} else {
+				fatal(errors.New("unknown argument: " + args[i]))
+			}
 		}
 	}
+	c.ctx.args = unknown
 }
 
 func (c *Cortana) unmarshalConfigs(v interface{}) {
