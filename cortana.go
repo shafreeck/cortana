@@ -457,11 +457,11 @@ func (c *Cortana) collectFlags() {
 	}
 	for _, f := range flags {
 		var flag string
-		if f.short != "-" {
+		if f.short != "-" && f.short != "" {
 			flag += f.short
 		}
 		if f.long != "-" {
-			if f.short != "-" {
+			if f.short != "-" || f.short == "" {
 				flag += ", " + f.long
 			} else {
 				flag += "    " + f.long
