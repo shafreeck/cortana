@@ -483,6 +483,9 @@ func (c *Cortana) collectFlags() {
 			// if no default value, use its zero value
 			if f.defaultValue == "" {
 				s = fmt.Sprintf("  %-30s %s (default=%v)\n", flag, f.description, f.rv.Interface())
+				if f.rv.Kind() == reflect.String {
+					s = fmt.Sprintf("  %-30s %s (default=%q)\n", flag, f.description, f.rv.Interface())
+				}
 			}
 			w.WriteString(s)
 		} else {
