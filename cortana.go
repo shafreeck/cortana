@@ -461,7 +461,7 @@ func (c *Cortana) collectFlags() {
 			flag += f.short
 		}
 		if f.long != "-" {
-			if f.short != "-" || f.short == "" {
+			if f.short != "-" && f.short != "" {
 				flag += ", " + f.long
 			} else {
 				flag += "    " + f.long
