@@ -479,7 +479,11 @@ func (c *Cortana) collectFlags() {
 			flag += "\n                                "
 		}
 		if !f.required && f.rv.Kind() != reflect.Bool {
-			s := fmt.Sprintf("  %-30s %s. (default=%s)\n", flag, f.description, f.defaultValue)
+			s := fmt.Sprintf("  %-30s %s (default=%s)\n", flag, f.description, f.defaultValue)
+			// if no default value, use its zero value
+			if f.defaultValue == "" {
+				s = fmt.Sprintf("  %-30s %s (default=%v)\n", flag, f.description, f.rv.Interface())
+			}
 			w.WriteString(s)
 		} else {
 			s := fmt.Sprintf("  %-30s %s\n", flag, f.description)
