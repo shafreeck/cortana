@@ -113,12 +113,52 @@ func (c *Cortana) AddEnvUnmarshaler(unmarshaler EnvUnmarshaler) {
 
 // Launch and run commands
 func (c *Cortana) Launch() {
-	cmd := c.searchCommand(os.Args[1:])
+	cmds := filterCombinationCommand(os.Args[1:])
+	cmd := c.searchCommand(cmds)
 	if cmd == nil {
 		c.Usage()
 		return
 	}
 	cmd.Proc()
+}
+
+func filterCombinationCommand(args []string) []string {
+
+	var (
+		cmd     []string
+		cmdTemp string
+	)
+
+	const (
+		StartPrefix = "["
+		EndSuffix   = "]"
+	)
+
+	var anchor = 0
+	for _, arg := range args {
+
+		if arg[:1] == StartPrefix {
+			anchor = 1
+		}
+
+		if arg[len(arg)-1:] == EndSuffix {
+			anchor = 2
+		}
+
+		if anchor == 1 {
+			arg = strings.TrimLeft(arg, StartPrefix)
+			cmdTemp += fmt.Sprintf(" %s", arg)
+		} else if anchor == 2 {
+			arg = strings.TrimRight(arg, EndSuffix)
+			cmdTemp += fmt.Sprintf(" %s", arg)
+			cmd = append(cmd, cmdTemp)
+			anchor = 0
+			cmdTemp = ""
+		} else {
+			cmd = append(cmd, arg)
+		}
+	}
+	return cmd
 }
 
 func (c *Cortana) searchCommand(args []string) *Command {
