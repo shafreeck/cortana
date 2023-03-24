@@ -737,7 +737,7 @@ func (c *Cortana) unmarshalArgs(ignoreUnknown bool) {
 			}
 			if i+1 < len(args) {
 				next := args[i+1]
-				if next[0] != '-' {
+				if next[0] != '-' || next == "--" { // allow "--" as a special value
 					if err := applyValue(flag.rv, next); err != nil {
 						fatal(err)
 					}
