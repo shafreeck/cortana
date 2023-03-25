@@ -103,6 +103,13 @@ func (c *Cortana) AddRootCommand(cmd func()) {
 
 // AddConfig adds a config file
 func (c *Cortana) AddConfig(path string, unmarshaler Unmarshaler) {
+	// expand the path
+	if path != "" && path[0] == '~' {
+		home, _ := os.UserHomeDir()
+		if home != "" {
+			path = home + path[1:]
+		}
+	}
 	cfg := &config{path: path, unmarshaler: unmarshaler}
 	c.configs = append(c.configs, cfg)
 }
