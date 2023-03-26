@@ -124,15 +124,19 @@ func (c *Cortana) Launch(args ...string) {
 	if len(args) == 0 {
 		args = os.Args[1:]
 	}
-	cmd := c.searchCommand(args)
+	cmd := c.SearchCommand(args)
 	if cmd == nil {
 		c.Usage()
+		if len(args) > 0 {
+			fatal(errors.New("unknown command: " + args[0]))
+		}
 		return
 	}
 	cmd.Proc()
 }
 
-func (c *Cortana) searchCommand(args []string) *Command {
+// SearchCommand returns the command according the args
+func (c *Cortana) SearchCommand(args []string) *Command {
 	var cmdArgs []string
 	var maybeArgs []string
 	var path string
@@ -173,7 +177,7 @@ func (c *Cortana) searchCommand(args []string) *Command {
 				st = StateCommandArg
 				continue
 			}
-			fatal(errors.New("unknown command: " + p))
+			return nil
 
 		case StateCommandPrefix:
 			if strings.HasPrefix(arg, "-") {
@@ -410,7 +414,7 @@ func (c *Cortana) Alias(name, definition string) {
 }
 func (c *Cortana) alias(definition string) {
 	args := strings.Fields(definition)
-	cmd := c.searchCommand(append(args, c.ctx.args...))
+	cmd := c.SearchCommand(append(args, c.ctx.args...))
 	if cmd == nil {
 		c.Usage()
 		return
@@ -872,4 +876,9 @@ func Use(opts ...Option) {
 // Complete returns all the commands that has prefix
 func Complete(prefix string) []*Command {
 	return c.Complete(prefix)
+}
+
+// SearchCommand returns the command according the args
+func SearchCommand(args []string) *Command {
+	return c.SearchCommand(args)
 }
