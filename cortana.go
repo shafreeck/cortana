@@ -317,6 +317,8 @@ func (c *Cortana) Parse(v interface{}, opts ...ParseOption) {
 	}
 
 	// process the defined args
+	c.parsing.flags = nil // reset parsing state, so the Parse function could be reused
+	c.parsing.nonflags = nil
 	flags, nonflags := parseCortanaTags(reflect.ValueOf(v))
 	c.parsing.flags = append(c.parsing.flags, flags...)
 	c.parsing.nonflags = append(c.parsing.nonflags, nonflags...)
