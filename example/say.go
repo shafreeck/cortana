@@ -37,10 +37,25 @@ together to choose the person more effectively`)
 
 }
 
+func complete() {
+	cortana.Title("Complete a command")
+	cortana.Description("return all the commands that has prefix")
+	opts := struct {
+		Prefix string `cortana:"prefix"`
+	}{}
+	cortana.Parse(&opts)
+
+	cmds := cortana.Complete(opts.Prefix)
+	for _, cmd := range cmds {
+		fmt.Println(cmd.Path+":", cmd.Brief)
+	}
+}
+
 func main() {
 	cortana.AddCommand("say hello cortana", sayHelloCortana, "say hello to cortana")
 	cortana.AddCommand("say hello", sayHelloAnyone, "say hello to anyone")
 	cortana.AddCommand("say", sayAnything, "say anything to anyone")
+	cortana.AddCommand("complete", complete, "complete a command prefix")
 
 	cortana.Alias("cortana", "say hello cortana")
 

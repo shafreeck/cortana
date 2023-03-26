@@ -11,6 +11,7 @@ import (
 	"strconv"
 	"strings"
 	"time"
+	"unsafe"
 
 	"github.com/google/btree"
 )
@@ -392,6 +393,12 @@ func (c *Cortana) Usage() {
 		fmt.Println("Usage:", c.ctx.desc.flags)
 	}
 	os.Exit(0)
+}
+
+// Complete returns all the commands that has prefix
+func (c *Cortana) Complete(prefix string) []*Command {
+	cmds := c.commands.scan(prefix)
+	return *(*[]*Command)(unsafe.Pointer(&cmds))
 }
 
 func (c *Cortana) Alias(name, definition string) {
@@ -861,4 +868,9 @@ func Launch(args ...string) {
 // Use the cortana options
 func Use(opts ...Option) {
 	c.Use(opts...)
+}
+
+// Complete returns all the commands that has prefix
+func Complete(prefix string) []*Command {
+	return c.Complete(prefix)
 }
