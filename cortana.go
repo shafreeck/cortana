@@ -392,7 +392,6 @@ func (c *Cortana) Usage() {
 	if c.ctx.desc.flags != "" {
 		fmt.Println("Usage:", c.ctx.desc.flags)
 	}
-	os.Exit(0)
 }
 
 // Complete returns all the commands that has prefix
