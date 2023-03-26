@@ -118,9 +118,12 @@ func (c *Cortana) AddEnvUnmarshaler(unmarshaler EnvUnmarshaler) {
 	c.envs = append(c.envs, unmarshaler)
 }
 
-// Launch and run commands
-func (c *Cortana) Launch() {
-	cmd := c.searchCommand(os.Args[1:])
+// Launch and run commands, os.Args is used if no args supplied
+func (c *Cortana) Launch(args ...string) {
+	if len(args) == 0 {
+		args = os.Args[1:]
+	}
+	cmd := c.searchCommand(args)
 	if cmd == nil {
 		c.Usage()
 		return
@@ -850,9 +853,9 @@ func Commands() []*Command {
 	return c.Commands()
 }
 
-// Launch finds and executes the command
-func Launch() {
-	c.Launch()
+// Launch finds and executes the command, os.Args is used if no args supplied
+func Launch(args ...string) {
+	c.Launch(args...)
 }
 
 // Use the cortana options
