@@ -355,13 +355,17 @@ func (c *Cortana) Description(text string) {
 
 // Usage prints the usage
 func (c *Cortana) Usage() {
+	fmt.Print(c.UsageString())
+}
+
+// Usage returns the usage string
+func (c *Cortana) UsageString() string {
+	out := bytes.NewBuffer(nil)
 	if c.ctx.desc.title != "" {
-		fmt.Println(c.ctx.desc.title)
-		fmt.Println()
+		out.WriteString(c.ctx.desc.title + "\n\n")
 	}
 	if c.ctx.desc.description != "" {
-		fmt.Println(c.ctx.desc.description)
-		fmt.Println()
+		out.WriteString(c.ctx.desc.description + "\n\n")
 	}
 
 	//  print the aliailable commands
@@ -371,8 +375,7 @@ func (c *Cortana) Usage() {
 		commands = commands[1:]
 	}
 	if len(commands) > 0 {
-		fmt.Println("Available commands:")
-		fmt.Println()
+		out.WriteString("Available commands:\n\n")
 		sort.Sort(orderedCommands(commands))
 
 		cmds := bytes.NewBuffer(nil)
@@ -384,18 +387,17 @@ func (c *Cortana) Usage() {
 			}
 			writeString(fmt.Sprintf("%-30s%s\n", cmd.Path, cmd.Brief))
 		}
-		fmt.Println(cmds.String())
-		fmt.Println()
+		out.WriteString(cmds.String() + "\n\n")
 		if alias.Len() > 0 {
-			fmt.Println("Alias commands:")
-			fmt.Println()
-			fmt.Println(alias.String())
+			out.WriteString("Alias commands:\n\n")
+			out.WriteString(alias.String() + "\n")
 		}
 	}
 
 	if c.ctx.desc.flags != "" {
-		fmt.Println("Usage:", c.ctx.desc.flags)
+		out.WriteString("Usage:" + c.ctx.desc.flags + "\n")
 	}
+	return out.String()
 }
 
 // Complete returns all the commands that has prefix
@@ -881,4 +883,9 @@ func Complete(prefix string) []*Command {
 // SearchCommand returns the command according the args
 func SearchCommand(args []string) *Command {
 	return c.SearchCommand(args)
+}
+
+// Usage returns the usage string
+func UsageString() string {
+	return c.UsageString()
 }
