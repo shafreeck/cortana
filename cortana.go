@@ -11,6 +11,7 @@ import (
 	"strconv"
 	"strings"
 	"time"
+	"unicode"
 	"unsafe"
 
 	"github.com/google/btree"
@@ -417,7 +418,13 @@ func (c *Cortana) Alias(name, definition string) {
 	c.seq++
 }
 func (c *Cortana) alias(definition string) {
-	args := strings.Fields(definition)
+	quoted := false
+	args := strings.FieldsFunc(definition, func(r rune) bool {
+		if r == '"' {
+			quoted = !quoted
+		}
+		return unicode.IsSpace(r) && !quoted
+	})
 	cmd := c.SearchCommand(append(args, c.ctx.args...))
 	if cmd == nil {
 		c.Usage()
