@@ -371,6 +371,8 @@ func (c *Cortana) Parse(v interface{}, opts ...ParseOption) {
 			if v := recover(); v != nil {
 				if s, ok := v.(string); ok && s == "restart" {
 					restart = true
+				} else if s == "abort" {
+					return
 				} else {
 					panic(v)
 				}
@@ -743,6 +745,7 @@ func (c *Cortana) unmarshalArgs(ignoreUnknown bool, onUsage func(usage string)) 
 		// print the usage and abort
 		if args[i] == c.predefined.help.long || args[i] == c.predefined.help.short {
 			onUsage(c.UsageString())
+			panic("abort")
 		}
 		// handle nonflags
 		if !strings.HasPrefix(args[i], "-") && len(nonflags) > 0 {
