@@ -32,6 +32,9 @@ type Cortana struct {
 	predefined predefined
 	configs    []*config
 	envs       []EnvUnmarshaler
+	stdout     *os.File
+	stderr     *os.File
+	exitOnErr  bool
 
 	parsing struct {
 		flags    []*flag
@@ -42,53 +45,78 @@ type Cortana struct {
 	seq int
 }
 
-// fatal exit the process with an error
-func fatal(err error) {
-	fmt.Println(err)
-	os.Exit(-1)
-}
-
-type Option func(flags *predefined)
+type Option func(c *Cortana)
 
 func HelpFlag(long, short string) Option {
-	return func(p *predefined) {
-		p.help.long = long
-		p.help.short = short
-		p.help.desc = "help for the command"
+	return func(c *Cortana) {
+		c.predefined.help.long = long
+		c.predefined.help.short = short
+		c.predefined.help.desc = "help for the command"
 	}
 }
 func DisableHelpFlag() Option {
 	return HelpFlag("", "")
 }
 
+func WithStdout(stdout *os.File) Option {
+	return func(c *Cortana) {
+		c.stdout = stdout
+	}
+}
+
+func WithStderr(stderr *os.File) Option {
+	return func(c *Cortana) {
+		c.stdout = stderr
+	}
+}
+
+func ExitOnError(b bool) Option {
+	return func(c *Cortana) {
+		c.exitOnErr = b
+	}
+}
+
 // ConfFlag parse the configration file path from flags
 func ConfFlag(long, short string, unmarshaler Unmarshaler) Option {
-	return func(p *predefined) {
-		p.cfg.long = long
-		p.cfg.short = short
-		p.cfg.desc = "path of the configuration file"
-		p.cfg.unmarshaler = unmarshaler
+	return func(c *Cortana) {
+		c.predefined.cfg.long = long
+		c.predefined.cfg.short = short
+		c.predefined.cfg.desc = "path of the configuration file"
+		c.predefined.cfg.unmarshaler = unmarshaler
 	}
 }
 
 // New a Cortana commander
 func New(opts ...Option) *Cortana {
-	c := &Cortana{commands: commands{t: btree.New(8)}, ctx: context{args: os.Args[1:], name: os.Args[0]}}
+	c := &Cortana{commands: commands{t: btree.New(8)},
+		ctx:       context{args: os.Args[1:], name: os.Args[0]},
+		stdout:    os.Stdout,
+		stderr:    os.Stderr,
+		exitOnErr: true,
+	}
 	c.predefined.help = longshort{
 		long:  "--help",
 		short: "-h",
 		desc:  "help for the command",
 	}
 	for _, opt := range opts {
-		opt(&c.predefined)
+		opt(c)
 	}
 	return c
+}
+
+// fatal exit the process with an error
+func (c *Cortana) fatal(err error) {
+	fmt.Fprintln(c.stderr, err)
+	if c.exitOnErr {
+		os.Exit(-1)
+	}
 }
 
 // Use the cortana options
 func (c *Cortana) Use(opts ...Option) {
 	for _, opt := range opts {
-		opt(&c.predefined)
+		opt(c)
 	}
 }
 
@@ -129,7 +157,7 @@ func (c *Cortana) Launch(args ...string) {
 	if cmd == nil {
 		c.Usage()
 		if len(args) > 0 {
-			fatal(errors.New("unknown command: " + args[0]))
+			c.fatal(errors.New("unknown command: " + args[0]))
 		}
 		return
 	}
@@ -290,6 +318,7 @@ func (c *Cortana) Commands() []*Command {
 type parseOption struct {
 	ignoreUnknownArgs bool
 	args              []string
+	onUsage           func(usage string) // a callback after parsing "--help, -h"
 }
 type ParseOption func(opt *parseOption)
 
@@ -298,9 +327,16 @@ func IgnoreUnknownArgs() ParseOption {
 		opt.ignoreUnknownArgs = true
 	}
 }
+
 func WithArgs(args []string) ParseOption {
 	return func(opt *parseOption) {
 		opt.args = args
+	}
+}
+
+func OnUsage(f func(usage string)) ParseOption {
+	return func(opt *parseOption) {
+		opt.onUsage = f
 	}
 }
 
@@ -309,7 +345,11 @@ func (c *Cortana) Parse(v interface{}, opts ...ParseOption) {
 	if v == nil {
 		return
 	}
-	opt := parseOption{}
+	// print the usage and exit by default when parsing the usage/help flags
+	opt := parseOption{onUsage: func(usage string) {
+		fmt.Fprint(c.stdout, usage)
+		os.Exit(0)
+	}}
 	for _, o := range opts {
 		o(&opt)
 	}
@@ -338,7 +378,7 @@ func (c *Cortana) Parse(v interface{}, opts ...ParseOption) {
 		}()
 		c.unmarshalConfigs(v)
 		c.unmarshalEnvs(v)
-		c.unmarshalArgs(opt.ignoreUnknownArgs)
+		c.unmarshalArgs(opt.ignoreUnknownArgs, opt.onUsage)
 		c.checkRequires()
 		return false
 	}() {
@@ -358,7 +398,7 @@ func (c *Cortana) Description(text string) {
 
 // Usage prints the usage
 func (c *Cortana) Usage() {
-	fmt.Print(c.UsageString())
+	fmt.Fprint(c.stdout, c.UsageString())
 }
 
 // Usage returns the usage string
@@ -580,7 +620,7 @@ func (c *Cortana) applyDefaultValues() {
 			continue
 		}
 		if err := applyValue(nf.rv, nf.defaultValue); err != nil {
-			fatal(err)
+			c.fatal(err)
 		}
 	}
 	for _, f := range c.parsing.flags {
@@ -591,7 +631,7 @@ func (c *Cortana) applyDefaultValues() {
 			continue
 		}
 		if err := applyValue(f.rv, f.defaultValue); err != nil {
-			fatal(err)
+			c.fatal(err)
 		}
 	}
 }
@@ -658,7 +698,7 @@ func (c *Cortana) checkRequires() {
 	if i < len(nonflags) {
 		for _, nf := range nonflags[i:] {
 			if nf.required && nf.rv.IsZero() {
-				fatal(errors.New("<" + nf.long + "> is required"))
+				c.fatal(errors.New("<" + nf.long + "> is required"))
 			}
 		}
 
@@ -684,32 +724,31 @@ func (c *Cortana) checkRequires() {
 		}
 
 		if f.long != "-" {
-			fatal(errors.New(f.long + " is required"))
+			c.fatal(errors.New(f.long + " is required"))
 		}
 		if f.short != "-" {
-			fatal(errors.New(f.short + " is required"))
+			c.fatal(errors.New(f.short + " is required"))
 		}
 	}
 }
 
 // unmarshalArgs fills v with the parsed args
-func (c *Cortana) unmarshalArgs(ignoreUnknown bool) {
+func (c *Cortana) unmarshalArgs(ignoreUnknown bool, onUsage func(usage string)) {
 	flags := buildArgsIndex(c.parsing.flags)
 	nonflags := c.parsing.nonflags
 
 	var unknown []string
 	args := c.ctx.args
 	for i := 0; i < len(args); i++ {
-		// print the usage and exit
+		// print the usage and abort
 		if args[i] == c.predefined.help.long || args[i] == c.predefined.help.short {
-			c.Usage()
-			return
+			onUsage(c.UsageString())
 		}
 		// handle nonflags
 		if !strings.HasPrefix(args[i], "-") && len(nonflags) > 0 {
 			rv := nonflags[0].rv
 			if err := applyValue(rv, args[i]); err != nil {
-				fatal(err)
+				c.fatal(err)
 			}
 			if rv.Kind() != reflect.Slice {
 				nonflags = nonflags[1:]
@@ -746,7 +785,7 @@ func (c *Cortana) unmarshalArgs(ignoreUnknown bool) {
 					panic("restart")
 				}
 			}
-			fatal(errors.New(key + " requires an argument"))
+			c.fatal(errors.New(key + " requires an argument"))
 		}
 
 		flag, ok := flags[key]
@@ -756,13 +795,13 @@ func (c *Cortana) unmarshalArgs(ignoreUnknown bool) {
 			}
 			if value != "" {
 				if err := applyValue(flag.rv, value); err != nil {
-					fatal(err)
+					c.fatal(err)
 				}
 				continue
 			}
 			if flag.rv.Kind() == reflect.Bool {
 				if err := applyValue(flag.rv, "true"); err != nil {
-					fatal(err)
+					c.fatal(err)
 				}
 				continue
 			}
@@ -770,18 +809,18 @@ func (c *Cortana) unmarshalArgs(ignoreUnknown bool) {
 				next := args[i+1]
 				if next[0] != '-' || next == "--" { // allow "--" as a special value
 					if err := applyValue(flag.rv, next); err != nil {
-						fatal(err)
+						c.fatal(err)
 					}
 					i++
 					continue
 				}
 			}
-			fatal(errors.New(key + " requires an argument"))
+			c.fatal(errors.New(key + " requires an argument"))
 		} else {
 			if ignoreUnknown {
 				unknown = append(unknown, args[i])
 			} else {
-				fatal(errors.New("unknown argument: " + args[i]))
+				c.fatal(errors.New("unknown argument: " + args[i]))
 			}
 		}
 	}
@@ -795,15 +834,15 @@ func (c *Cortana) unmarshalConfigs(v interface{}) {
 			if os.IsNotExist(err) && !cfg.requireExist {
 				continue
 			}
-			fatal(err)
+			c.fatal(err)
 		}
 		data, err := ioutil.ReadAll(file)
 		if err != nil {
-			fatal(err)
+			c.fatal(err)
 		}
 
 		if err := cfg.unmarshaler.Unmarshal(data, v); err != nil {
-			fatal(err)
+			c.fatal(err)
 		}
 		file.Close()
 	}
@@ -812,7 +851,7 @@ func (c *Cortana) unmarshalConfigs(v interface{}) {
 func (c *Cortana) unmarshalEnvs(v interface{}) {
 	for _, u := range c.envs {
 		if err := u.Unmarshal(v); err != nil {
-			fatal(err)
+			c.fatal(err)
 		}
 	}
 }
