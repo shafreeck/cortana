@@ -176,6 +176,10 @@ func (c *Cortana) SearchCommand(args []string) *Command {
 		StateOptionArg
 		StateCommandArg
 	)
+
+	// reset the search context
+	c.ctx = context{}
+
 	st := StateCommand
 	cmd := c.commands.get(path)
 	for i := 0; i < len(args); i++ {
