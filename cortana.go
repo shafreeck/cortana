@@ -157,7 +157,7 @@ func (c *Cortana) Launch(args ...string) {
 	cmd := c.SearchCommand(args)
 	if cmd == nil {
 		c.Usage()
-		if len(args) > 0 {
+		if len(args) > 0 && !strings.HasPrefix(args[0], "-") {
 			c.fatal(errors.New("unknown command: " + args[0]))
 		}
 		return
