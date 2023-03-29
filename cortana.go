@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"errors"
 	"fmt"
+	"io"
 	"io/ioutil"
 	"os"
 	"reflect"
@@ -32,8 +33,8 @@ type Cortana struct {
 	predefined predefined
 	configs    []*config
 	envs       []EnvUnmarshaler
-	stdout     *os.File
-	stderr     *os.File
+	stdout     io.Writer
+	stderr     io.Writer
 	exitOnErr  bool
 
 	parsing struct {
@@ -58,13 +59,13 @@ func DisableHelpFlag() Option {
 	return HelpFlag("", "")
 }
 
-func WithStdout(stdout *os.File) Option {
+func WithStdout(stdout io.Writer) Option {
 	return func(c *Cortana) {
 		c.stdout = stdout
 	}
 }
 
-func WithStderr(stderr *os.File) Option {
+func WithStderr(stderr io.Writer) Option {
 	return func(c *Cortana) {
 		c.stdout = stderr
 	}
