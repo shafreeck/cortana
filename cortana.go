@@ -16,6 +16,7 @@ import (
 	"unsafe"
 
 	"github.com/google/btree"
+	"github.com/muesli/reflow/wordwrap"
 )
 
 type predefined struct {
@@ -557,18 +558,19 @@ func (c *Cortana) collectFlags() {
 			flag += "\n                                "
 		}
 		if !f.required && f.rv.Kind() != reflect.Bool {
-			s := fmt.Sprintf("  %-30s %s (default=%s)\n", flag, f.description, f.defaultValue)
+			s := wordWrapWithPrefix(fmt.Sprintf("  %-30s ", flag), f.description, 50)
+			defaultValue := fmt.Sprintf("(default=%s)\n", f.defaultValue)
 			// if no default value, use its zero value
 			if f.defaultValue == "" {
-				s = fmt.Sprintf("  %-30s %s (default=%v)\n", flag, f.description, f.rv.Interface())
+				defaultValue = fmt.Sprintf("(default=%v)\n", f.rv.Interface())
 				if f.rv.Kind() == reflect.String {
-					s = fmt.Sprintf("  %-30s %s (default=%q)\n", flag, f.description, f.rv.Interface())
+					defaultValue = fmt.Sprintf("(default=%q)\n", f.rv.Interface())
 				}
 			}
-			w.WriteString(s)
+			w.WriteString(s + defaultValue)
 		} else {
-			s := fmt.Sprintf("  %-30s %s\n", flag, f.description)
-			w.WriteString(s)
+			s := wordWrapWithPrefix(fmt.Sprintf("  %-30s ", flag), f.description, 50)
+			w.WriteString(s + "\n")
 		}
 	}
 
@@ -862,6 +864,30 @@ func (c *Cortana) unmarshalEnvs(v interface{}) {
 			c.fatal(err)
 		}
 	}
+}
+
+//
+// prefix: one
+//         two
+//         three
+//
+
+// wrap text with prefix as format above
+func wordWrapWithPrefix(prefix string, text string, n int) string {
+	lines := strings.Split(wordwrap.String(text, n), "\n")
+
+	if len(lines) == 0 {
+		return prefix
+	}
+
+	b := &strings.Builder{}
+	b.WriteString(prefix)
+	b.WriteString(lines[0] + "\n")
+	for i := 1; i < len(lines); i++ {
+		align := strings.Repeat(" ", len(prefix))
+		b.WriteString(align + lines[i] + "\n")
+	}
+	return strings.TrimRight(b.String(), "\n")
 }
 
 var c *Cortana
