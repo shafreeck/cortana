@@ -558,7 +558,7 @@ func (c *Cortana) collectFlags() {
 			flag += "\n                                "
 		}
 		if !f.required && f.rv.Kind() != reflect.Bool {
-			s := wordWrapWithPrefix(fmt.Sprintf("  %-30s ", flag), f.description, 50)
+			s := wordWrapWithPrefix(fmt.Sprintf("  %-30s ", flag), f.description, 50, 33) // 30+ 3 spaces
 			defaultValue := fmt.Sprintf("(default=%s)\n", f.defaultValue)
 			// if no default value, use its zero value
 			if f.defaultValue == "" {
@@ -569,7 +569,7 @@ func (c *Cortana) collectFlags() {
 			}
 			w.WriteString(s + defaultValue)
 		} else {
-			s := wordWrapWithPrefix(fmt.Sprintf("  %-30s ", flag), f.description, 50)
+			s := wordWrapWithPrefix(fmt.Sprintf("  %-30s ", flag), f.description, 50, 33)
 			w.WriteString(s + "\n")
 		}
 	}
@@ -873,8 +873,8 @@ func (c *Cortana) unmarshalEnvs(v interface{}) {
 //
 
 // wrap text with prefix as format above
-func wordWrapWithPrefix(prefix string, text string, n int) string {
-	lines := strings.Split(wordwrap.String(text, n), "\n")
+func wordWrapWithPrefix(prefix string, text string, width, indent int) string {
+	lines := strings.Split(wordwrap.String(text, width), "\n")
 
 	if len(lines) == 0 {
 		return prefix
@@ -884,7 +884,7 @@ func wordWrapWithPrefix(prefix string, text string, n int) string {
 	b.WriteString(prefix)
 	b.WriteString(lines[0] + "\n")
 	for i := 1; i < len(lines); i++ {
-		align := strings.Repeat(" ", len(prefix))
+		align := strings.Repeat(" ", indent)
 		b.WriteString(align + lines[i] + "\n")
 	}
 	return strings.TrimRight(b.String(), "\n")
